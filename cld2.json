@@ -1,0 +1,540 @@
+{
+  "nodes": [
+    {
+      "id": "Diet related health problems",
+      "level": 1,
+      "x": 464.4,
+      "y": 693.9
+    },
+    {
+      "id": "Discrimination",
+      "level": 4,
+      "x": 270.4,
+      "y": 694
+    },
+    {
+      "id": "Food trends",
+      "level": 4,
+      "x": 504.2,
+      "y": 637.4
+    },
+    {
+      "id": "Genetic risk factors",
+      "level": 1,
+      "x": 458,
+      "y": 864
+    },
+    {
+      "id": "Having time or energy to cook",
+      "level": 1,
+      "x": 596.6,
+      "y": 440.9
+    },
+    {
+      "id": "Industrialization of the food system",
+      "level": 4,
+      "x": 516,
+      "y": 760.5
+    },
+    {
+      "id": "Living alone",
+      "level": 1,
+      "x": 539.4,
+      "y": 288.7
+    },
+    {
+      "id": "Need for trustworthy information",
+      "level": 1,
+      "x": 312.6,
+      "y": 783.8
+    },
+    {
+      "id": "On-the-go culture",
+      "level": 4,
+      "x": 627.2,
+      "y": 503.8
+    },
+    {
+      "id": "Power in the food system",
+      "level": 4,
+      "x": 641.9,
+      "y": 731.3
+    },
+    {
+      "id": "Transparency in food system",
+      "level": 4,
+      "x": 556.7,
+      "y": 882.5
+    },
+    {
+      "id": "Trust in institutions and the food system",
+      "level": 4,
+      "x": 391.9,
+      "y": 814.9
+    },
+    {
+      "id": "Social reinforcement",
+      "level": 2,
+      "x": 487.3,
+      "y": 463.2
+    },
+    {
+      "id": "Social norms",
+      "level": 2,
+      "x": 335.7,
+      "y": 457.1
+    },
+    {
+      "id": "Eating together",
+      "level": 2,
+      "x": 523.3,
+      "y": 428.2
+    },
+    {
+      "id": "Social connection",
+      "level": 2,
+      "x": 444.2,
+      "y": 590.6
+    },
+    {
+      "id": "Mental health",
+      "level": 1,
+      "x": 363.1,
+      "y": 564
+    },
+    {
+      "id": "Household income",
+      "level": 3,
+      "x": 823.3,
+      "y": 625.6
+    },
+    {
+      "id": "Demand for unhealthy food",
+      "level": 4,
+      "x": 739.5,
+      "y": 598.3
+    },
+    {
+      "id": "Inflation",
+      "level": 4,
+      "x": 694.9,
+      "y": 469.3
+    },
+    {
+      "id": "Financial stress",
+      "level": 1,
+      "x": 651.4,
+      "y": 598.3
+    },
+    {
+      "id": "Participation",
+      "level": 2,
+      "x": 397.2,
+      "y": 357.4
+    },
+    {
+      "id": "Unhealthy food characteristics",
+      "level": 3,
+      "x": 643,
+      "y": 794.8
+    },
+    {
+      "id": "Healthy food availability",
+      "level": 3,
+      "x": 785.8,
+      "y": 749.5
+    },
+    {
+      "id": "Healthy food accessibility",
+      "level": 3,
+      "x": 656,
+      "y": 663.9
+    },
+    {
+      "id": "Healthy eating",
+      "level": 1,
+      "x": 543.7,
+      "y": 608.4
+    },
+    {
+      "id": "Gentrification",
+      "level": 3,
+      "x": 842.1,
+      "y": 480.4
+    },
+    {
+      "id": "Access to health care and information",
+      "level": 3,
+      "x": 379.8,
+      "y": 661.3
+    },
+    {
+      "id": "Access to social resources",
+      "level": 2,
+      "x": 377.6,
+      "y": 501.8
+    },
+    {
+      "id": "Making healthy eating a priority",
+      "level": 1,
+      "x": 531,
+      "y": 516.8
+    },
+    {
+      "id": "Time stress",
+      "level": 4,
+      "x": 452.5,
+      "y": 517.5
+    }
+  ],
+  "edges": [
+    {
+      "source": "Genetic risk factors",
+      "target": "Diet related health problems"
+    },
+    {
+      "source": "Living alone",
+      "target": "Having time or energy to cook"
+    },
+    {
+      "source": "Power in the food system",
+      "target": "Industrialization of the food system"
+    },
+    {
+      "source": "Diet related health problems",
+      "target": "Need for trustworthy information"
+    },
+    {
+      "source": "Power in the food system",
+      "target": "Transparency in food system"
+    },
+    {
+      "source": "Diet related health problems",
+      "target": "Trust in institutions and the food system"
+    },
+    {
+      "source": "Discrimination",
+      "target": "Trust in institutions and the food system"
+    },
+    {
+      "source": "Transparency in food system",
+      "target": "Trust in institutions and the food system"
+    },
+    {
+      "source": "Food trends",
+      "target": "Social reinforcement"
+    },
+    {
+      "source": "Social norms",
+      "target": "Social reinforcement"
+    },
+    {
+      "source": "Eating together",
+      "target": "Social norms"
+    },
+    {
+      "source": "Eating together",
+      "target": "Social connection"
+    },
+    {
+      "source": "Social connection",
+      "target": "Social norms"
+    },
+    {
+      "source": "Social connection",
+      "target": "Social reinforcement"
+    },
+    {
+      "source": "Demand for unhealthy food",
+      "target": "Power in the food system"
+    },
+    {
+      "source": "Inflation",
+      "target": "Eating together"
+    },
+    {
+      "source": "Diet related health problems",
+      "target": "Financial stress"
+    },
+    {
+      "source": "Inflation",
+      "target": "Financial stress"
+    },
+    {
+      "source": "Financial stress",
+      "target": "Having time or energy to cook"
+    },
+    {
+      "source": "Living alone",
+      "target": "Participation"
+    },
+    {
+      "source": "Mental health",
+      "target": "Participation"
+    },
+    {
+      "source": "Social norms",
+      "target": "Participation"
+    },
+    {
+      "source": "Social reinforcement",
+      "target": "Participation"
+    },
+    {
+      "source": "Participation",
+      "target": "Eating together"
+    },
+    {
+      "source": "Power in the food system",
+      "target": "Healthy food availability"
+    },
+    {
+      "source": "Unhealthy food characteristics",
+      "target": "Healthy food availability"
+    },
+    {
+      "source": "Healthy food availability",
+      "target": "Healthy food accessibility"
+    },
+    {
+      "source": "Industrialization of the food system",
+      "target": "Healthy food accessibility"
+    },
+    {
+      "source": "Inflation",
+      "target": "Healthy food accessibility"
+    },
+    {
+      "source": "Eating together",
+      "target": "Healthy eating"
+    },
+    {
+      "source": "Financial stress",
+      "target": "Healthy eating"
+    },
+    {
+      "source": "Having time or energy to cook",
+      "target": "Healthy eating"
+    },
+    {
+      "source": "Healthy food accessibility",
+      "target": "Healthy eating"
+    },
+    {
+      "source": "Industrialization of the food system",
+      "target": "Healthy eating"
+    },
+    {
+      "source": "Social reinforcement",
+      "target": "Healthy eating"
+    },
+    {
+      "source": "Unhealthy food characteristics",
+      "target": "Healthy eating"
+    },
+    {
+      "source": "Healthy eating",
+      "target": "Demand for unhealthy food"
+    },
+    {
+      "source": "Healthy eating",
+      "target": "Diet related health problems"
+    },
+    {
+      "source": "Healthy eating",
+      "target": "Healthy food accessibility"
+    },
+    {
+      "source": "Healthy eating",
+      "target": "Mental health"
+    },
+    {
+      "source": "Living alone",
+      "target": "Eating together"
+    },
+    {
+      "source": "Gentrification",
+      "target": "Household income"
+    },
+    {
+      "source": "Gentrification",
+      "target": "Demand for unhealthy food"
+    },
+    {
+      "source": "Trust in institutions and the food system",
+      "target": "Access to health care and information"
+    },
+    {
+      "source": "Need for trustworthy information",
+      "target": "Access to health care and information"
+    },
+    {
+      "source": "Access to health care and information",
+      "target": "Healthy eating"
+    },
+    {
+      "source": "Access to health care and information",
+      "target": "Trust in institutions and the food system"
+    },
+    {
+      "source": "Industrialization of the food system",
+      "target": "Transparency in food system"
+    },
+    {
+      "source": "Gentrification",
+      "target": "Inflation"
+    },
+    {
+      "source": "Eating together",
+      "target": "Access to social resources"
+    },
+    {
+      "source": "Social connection",
+      "target": "Access to social resources"
+    },
+    {
+      "source": "Social reinforcement",
+      "target": "Access to social resources"
+    },
+    {
+      "source": "Access to social resources",
+      "target": "Access to health care and information"
+    },
+    {
+      "source": "Access to social resources",
+      "target": "Healthy eating"
+    },
+    {
+      "source": "Discrimination",
+      "target": "Mental health"
+    },
+    {
+      "source": "Household income",
+      "target": "Financial stress"
+    },
+    {
+      "source": "Demand for unhealthy food",
+      "target": "Healthy food availability"
+    },
+    {
+      "source": "Inflation",
+      "target": "Demand for unhealthy food"
+    },
+    {
+      "source": "On-the-go culture",
+      "target": "Healthy eating"
+    },
+    {
+      "source": "Industrialization of the food system",
+      "target": "Unhealthy food characteristics"
+    },
+    {
+      "source": "Unhealthy food characteristics",
+      "target": "Healthy food accessibility"
+    },
+    {
+      "source": "Diet related health problems",
+      "target": "Mental health"
+    },
+    {
+      "source": "Industrialization of the food system",
+      "target": "Food trends"
+    },
+    {
+      "source": "Power in the food system",
+      "target": "Food trends"
+    },
+    {
+      "source": "Healthy food accessibility",
+      "target": "Demand for unhealthy food"
+    },
+    {
+      "source": "Diet related health problems",
+      "target": "Making healthy eating a priority"
+    },
+    {
+      "source": "Financial stress",
+      "target": "Making healthy eating a priority"
+    },
+    {
+      "source": "Making healthy eating a priority",
+      "target": "Healthy eating"
+    },
+    {
+      "source": "Making healthy eating a priority",
+      "target": "Access to social resources"
+    },
+    {
+      "source": "Time stress",
+      "target": "Eating together"
+    },
+    {
+      "source": "Time stress",
+      "target": "Having time or energy to cook"
+    },
+    {
+      "source": "Time stress",
+      "target": "Healthy eating"
+    },
+    {
+      "source": "Time stress",
+      "target": "On-the-go culture"
+    }
+  ],
+  "loops": [],
+  "log": [
+    "Merged \"Healthy lifestyle\", \"Eating healthily\", \"Making healthy choices\" -> \"Healthy eating\"",
+    "Renamed \"(Positive) Social pressure\" -> \"Social reinforcement\"",
+    "Renamed \"Norms and expectations around eating unhealthy food\" -> \"Social norms\"",
+    "Merged \"Eating meals with other residents\", \"Eating together as familes\" -> \"Eating together\"",
+    "Renamed \"Connections among residents\" -> \"Social connection\"",
+    "Renamed \"Feeling better mentally\" -> \"Mental health\"",
+    "Renamed \"Total income from households\" -> \"Household income\"",
+    "Merged \"Demand food venues targetted towards higher incomes\", \"Demand for unhealthy food\" -> \"Demand for unhealthy food\"",
+    "Renamed \"Food, among many other things is becoming more expensive\" -> \"Inflation\"",
+    "Renamed \"Stress around money\" -> \"Financial stress\"",
+    "Renamed \"Society becoming more individualistic\" -> \"Individualisation\"",
+    "Renamed \"Participating in neighborhood activities\" -> \"Participation\"",
+    "Merged \"Individualisation\", \"Stress, gehaastheid\" -> \"Individualisation\"",
+    "Merged \"Processed food is cheaper\", \"Accessibility of healthy food\" -> \"Accessibility of healthy food\"",
+    "Merged \"Processed food is addictive\", \"Processed food is tasty\" -> \"Unhealthy food characteristics\"",
+    "Renamed \"Ubiquitousness of unhealthy food and advertising\" -> \"Healthy food availability\"",
+    "Renamed \"Accessibility of healthy food\" -> \"Healthy food accessibility\"",
+    "Merged \"Changing eating patterns, e.g. more snacking\", \"Healthy eating\" -> \"Changing eating patterns, e.g. more snacking\"",
+    "Changed level of \"Changing eating patterns, e.g. more snacking\": Societal -> Individual",
+    "Renamed \"Changing eating patterns, e.g. more snacking\" -> \"Healthy eating\"",
+    "Merged \"Motivation to eat healthy\", \"Making healthy food a prioirty\" -> \"Motivation to eat healthy\"",
+    "Added link \"Living alone\" -> \"Eating together\"",
+    "Deleted \"Eating alone\" â€” 1 cause(s) now connect directly to 1 effect(s)",
+    "Merged \"Owner-occupied homes\", \"Attractiveness of neighborhood for high incomes\" -> \"Gentrification\"",
+    "Merged \"Receiving advice from a doctor or specialist\", \"Appropriate access to care and information\" -> \"Access to health care and information\"",
+    "Deleted \"Highly-processed food\" â€” 1 cause(s) now connect directly to 3 effect(s)",
+    "Removed link \"Inflation\" -> \"Gentrification\"",
+    "Added link \"Gentrification\" -> \"Inflation\"",
+    "Removed link \"Household income\" -> \"Gentrification\"",
+    "Renamed \"Seeking or sharing knowledge about healthy eating practices\" -> \"Access to social resources\"",
+    "Added link \"Discrimination\" -> \"Mental health\"",
+    "Added link \"Household income\" -> \"Financial stress\"",
+    "Added link \"Demand for unhealthy food\" -> \"Healthy food availability\"",
+    "Removed link \"Demand for unhealthy food\" -> \"Inflation\"",
+    "Added link \"Inflation\" -> \"Demand for unhealthy food\"",
+    "Removed link \"Healthy eating\" -> \"On-the-go culture\"",
+    "Added link \"Individualisation\" -> \"On-the-go culture\"",
+    "Removed link \"On-the-go culture\" -> \"Individualisation\"",
+    "Added link \"On-the-go culture\" -> \"Healthy eating\"",
+    "Added link \"Industrialization of the food system\" -> \"Unhealthy food characteristics\"",
+    "Removed link \"Healthy food accessibility\" -> \"Unhealthy food characteristics\"",
+    "Added link \"Unhealthy food characteristics\" -> \"Healthy food accessibility\"",
+    "Removed link \"Industrialization of the food system\" -> \"Diet related health problems\"",
+    "Removed link \"Transparency in food system\" -> \"Diet related health problems\"",
+    "Added link \"Diet related health problems\" -> \"Mental health\"",
+    "Added link \"Industrialization of the food system\" -> \"Food trends\"",
+    "Added link \"Power in the food system\" -> \"Food trends\"",
+    "Loaded 31 node(s), 73 edge(s) from uploaded file",
+    "Added link \"Healthy food accessibility\" -> \"Demand for unhealthy food\"",
+    "Renamed \"Motivation to eat healthy\" -> \"Making healthy eating a priority\"",
+    "Renamed \"Individualisation\" -> \"Hastiness\"",
+    "Renamed \"Hastiness\" -> \"Time stress\"",
+    "Removed link \"Time stress\" -> \"Living alone\""
+  ]
+}
