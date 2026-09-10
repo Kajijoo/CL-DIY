@@ -699,7 +699,6 @@ input[type="search"]:focus {
 }
 .node-dot { cursor: grab; stroke: var(--panel); stroke-width: 1.4; touch-action: none; }
 .node-dot.dragging { cursor: grabbing; }
-.node-dot.pinned { stroke: var(--ink); stroke-width: 2.6px; stroke-dasharray: 2.5 1.5; }
 .stage.free-arrange .node-dot { cursor: crosshair; }
 .stage.free-arrange .node-dot.dragging { cursor: grabbing; }
 .edge-path { fill: none; stroke: var(--edge); stroke-width: 1; }
@@ -903,20 +902,16 @@ input[type="search"]:focus {
       <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6 L16 6"/><path d="M7 6 L7 4 L13 4 L13 6"/><path d="M5.5 6 L6.3 16 L13.7 16 L14.5 6"/></svg>
       Clear entire diagram...
     </button>
-    <button class="mode-btn" id="import-btn">
+    <button class="mode-btn" id="import-btn" title="Upload a previously-exported graph JSON, or a raw .xmile file (positions, levels and loops aren't in that format, so it gets a fresh layout at the default level)">
       <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 12 L10 3"/><path d="M6 7 L10 3 L14 7"/><path d="M4 16 L16 16"/></svg>
-      Upload edited graph (.json)
+      Upload graph (.json / .xmile)
     </button>
-    <input type="file" id="import-file-input" accept="application/json,.json" style="display:none" />
+    <input type="file" id="import-file-input" accept=".json,.xmile,application/json" style="display:none" />
     <button class="mode-btn" id="export-btn">
       <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3 L10 12"/><path d="M6 8 L10 12 L14 8"/><path d="M4 16 L16 16"/></svg>
       Download edited graph (.json)
     </button>
     <p class="import-status" id="import-status" style="display:none"></p>
-    <p class="restore-note" id="restore-note" style="display:none">
-      <span id="restore-count"></span> node(s) deleted.
-      <button class="link-btn" id="restore-all">Restore full diagram</button>
-    </p>
   </aside>
 
   <div class="export-modal" id="export-modal" style="display:none">
@@ -971,9 +966,9 @@ input[type="search"]:focus {
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5A7 7 0 1 1 3 11"/><path d="M4 2.5 L4 6.5 L8 6.5"/></svg>
       </button>
       <button class="zoom-btn" id="reset-layout" aria-label="Reset node positions" title="Reset node positions and any dragged edge bends (also releases all pins)">
-        <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M16 6.5A7 7 0 1 0 17 11"/><path d="M16 2.5 L16 6.5 L12 6.5"/></svg>
+        <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="2.5" width="6" height="6" rx="1.2"/><rect x="11.5" y="2.5" width="6" height="6" rx="1.2"/><rect x="2.5" y="11.5" width="6" height="6" rx="1.2"/><rect x="11.5" y="11.5" width="6" height="6" rx="1.2"/></svg>
       </button>
-      <button class="zoom-btn" id="free-toggle" data-active="0" aria-label="Free-arrange mode" title="Free-arrange mode: dragged or clicked nodes stay put, freed from the layout springs">
+      <button class="zoom-btn" id="free-toggle" data-active="0" aria-label="Free-arrange mode" title="Free-arrange mode: freezes every node in place, freed from the layout springs, so you can drag anything without the rest chasing after it. Toggle off to resume the layout springs.">
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="7" r="3.4"/><path d="M10 10.4 L10 17.5"/></svg>
       </button>
       <button class="zoom-btn" id="export-png-btn" aria-label="Export diagram as PNG" title="Export the whole diagram as a PNG image (includes the &quot;show all loops&quot; overlay if it's on)">
@@ -1016,9 +1011,6 @@ input[type="search"]:focus {
 
 <script>
 const DATA = {"nodes":[],"edges":[],"levels":[{"level":1,"key":"level-1","label":"Level 1","color":"#3987e5"},{"level":2,"key":"level-2","label":"Level 2","color":"#2f9e6b"},{"level":3,"key":"level-3","label":"Level 3","color":"#c98a2c"},{"level":4,"key":"level-4","label":"Level 4","color":"#b24f4f"}],"canvas":{"w":1550.0,"h":1220.0},"counts":{"nodes":0,"edges":0},"loops":[],"log":[],"loopsDropped":0};
-// Pristine deep clone, taken before anything can mutate DATA, so "restore
-// full diagram" always has an untouched original to rebuild from.
-const ORIGINAL = JSON.parse(JSON.stringify(DATA));
 
 const svgNS = "http://www.w3.org/2000/svg";
 const svg = document.getElementById('svg');
@@ -1073,6 +1065,10 @@ let addNodeMode = false, addNodeLevel = 1;
 // free-arrange mode — see setFreeMode()/togglePin() near the drag-physics
 // code below for what "pinned" actually does to a node
 let freeMode = false;
+// node ids pinned automatically by the *current* free-arrange session (not
+// pinned some other way, e.g. a saved loop's own pin button) — tracked so
+// turning the mode back off can release exactly those, and only those
+let freeModeAutoPinned = new Set();
 
 // "show all loops" mode — see setShowAllLoops() further down. Declared this
 // early for the same reason addNodeMode is (see the comment above it):
@@ -1150,14 +1146,16 @@ function computeRadius(n) {
 }
 
 // dispatches a node click to whichever mode is active: picking nodes for a
-// merge, picking nodes for a feedback loop, or the normal single-select spotlight
+// merge, picking nodes for a feedback loop, or the normal single-select
+// spotlight — free-arrange mode doesn't hijack this: every node is already
+// pinned in bulk the moment that mode turns on (see setFreeMode()), so a
+// click there just selects/inspects the node like normal; dragging (a
+// separate pointerdown listener, unaffected by this dispatch) still moves it
 function onNodeClick(id) {
   if (mergeMode) {
     toggleMergePick(id);
   } else if (loopMode) {
     toggleLoopPick(id);
-  } else if (freeMode) {
-    togglePin(id);
   } else {
     selectNode(id);
   }
@@ -1366,14 +1364,6 @@ function removeEdge(entry) {
 function updateStats() {
   document.getElementById('stat-nodes').textContent = liveNodes.length;
   document.getElementById('stat-edges').textContent = edgeEls.length;
-  const deletedCount = ORIGINAL.nodes.length - liveNodes.length;
-  const note = document.getElementById('restore-note');
-  if (deletedCount > 0) {
-    document.getElementById('restore-count').textContent = deletedCount;
-    note.style.display = '';
-  } else {
-    note.style.display = 'none';
-  }
 }
 
 // creates one node's circle + label + listeners and registers it in the
@@ -1456,8 +1446,9 @@ function buildGraph(sourceData) {
   renderAllLevelGrids();
 
   // node/edge identity isn't preserved across a rebuild, so any saved loops
-  // would be pointing at objects that no longer exist — same reasoning
-  // restore-all already applies to changeLog
+  // would be pointing at objects that no longer exist — callers that need
+  // to keep loops (the initial page load) restore them separately afterward
+  // via restoreLoopsAndLogFrom()
   loops = [];
   highlightedLoopId = null;
   if (loopMode) setLoopMode(false);
@@ -1471,14 +1462,11 @@ function buildGraph(sourceData) {
 }
 
 // restores loops/log from a DATA-shaped object's own .loops/.log/
-// .loopsDropped — present when the page (or ORIGINAL, its pristine clone)
-// was rendered from an exported graph JSON (see build_payload_from_json()
-// in render.py); absent for an xmile-sourced page, where this is a no-op.
-// Shared by the initial page load and "Restore full diagram" so restoring
-// doesn't silently drop the source file's own saved loops the way it used
-// to (buildGraph() itself always resets loops to empty and never knew
-// about this — only ever restored via the "Upload edited graph" handler
-// and this same block, until now).
+// .loopsDropped — present when the page was rendered from an exported
+// graph JSON (see build_payload_from_json() in render.py); absent for an
+// xmile-sourced page, where this is a no-op. Called once at initial page
+// load, right after buildGraph(DATA) — buildGraph() itself always resets
+// loops to empty and has no idea a source object might carry its own.
 function restoreLoopsAndLogFrom(source) {
   if (!Array.isArray(source.loops) && !Array.isArray(source.log)) return;
   (source.loops || []).forEach(rl => {
@@ -1545,23 +1533,14 @@ function removeNode(id) {
 document.getElementById('delete-btn').addEventListener('click', () => {
   if (selected) removeNode(selected);
 });
-document.getElementById('restore-all').addEventListener('click', () => {
-  const original = JSON.parse(JSON.stringify(ORIGINAL));
-  buildGraph(original);
-  changeLog = [];
-  restoreLoopsAndLogFrom(original); // brings back ORIGINAL's own loops/log, if it was JSON-sourced
-  logChange('restore', 'Restored full diagram — all edits cleared');
-  pushUndoCheckpoint('Restored full diagram');
-});
 
 // wipes down to a blank canvas — for starting a completely new diagram
-// rather than editing the loaded one. ORIGINAL is untouched by this, so
-// "Restore full diagram" still brings back the pristine dataset afterward;
-// it's everything built *since* load (added nodes, merges, loops, polarity)
-// that's actually at risk, hence the confirm.
+// rather than editing the loaded one. This pushes its own undo checkpoint
+// like every other edit, so the confirm just guards against a stray click —
+// one Undo brings everything straight back if it was a mistake.
 document.getElementById('clear-all-btn').addEventListener('click', () => {
   if (liveNodes.length === 0) return; // already empty, nothing to confirm
-  if (!confirm('Delete all nodes and links? This clears the entire diagram so you can build a new one from scratch.\n\n(The original dataset isn\'t gone for good — "Restore full diagram" still brings it back afterward.)')) return;
+  if (!confirm('Delete all nodes and links? This clears the entire diagram so you can build a new one from scratch.\n\n(Click Undo afterward if you change your mind.)')) return;
   buildGraph({ nodes: [], edges: [], levels }); // keep the current level scheme — only content is being cleared
   changeLog = [];
   logChange('clear-all', 'Cleared the entire diagram — starting fresh');
@@ -2571,9 +2550,15 @@ window.addEventListener('pointerup', (ev) => {
   if (!dragNode || ev.pointerId !== dragNode.pointerId) return;
   nodeEls.get(dragNode.id).classList.remove('dragging');
   suppressClick = dragNode.moved;
-  // free-arrange mode: a node you actually dragged (not just clicked) stays
-  // exactly where you dropped it — no drift back toward its neighbors
-  if (freeMode && dragNode.moved) setPinned(dragNode.id, true);
+  // entering free-arrange mode already pins every existing node (see
+  // setFreeMode()) — this only matters for a node created *during* free
+  // mode (add/merge), which missed that sweep: dragging it pins it too, and
+  // into the same auto-pinned set, so it's released the same way as every
+  // other node once free mode is turned back off
+  if (freeMode && dragNode.moved) {
+    setPinned(dragNode.id, true);
+    freeModeAutoPinned.add(dragNode.id);
+  }
   dragNode = null;
   settleFrames = 0;
 });
@@ -2664,7 +2649,37 @@ function setFreeMode(on) {
   freeMode = on;
   document.getElementById('free-toggle').dataset.active = on ? '1' : '0';
   stage.classList.toggle('free-arrange', on);
-  if (on) clearSelection();
+  if (on) {
+    clearSelection();
+    // freezes the whole diagram at once — every node not already pinned for
+    // some other reason (e.g. a saved loop's own pin button) — so nothing
+    // drifts while you rearrange things. Only the nodes pinned *by this
+    // sweep* get tracked here, so turning the toggle back off releases
+    // exactly those and leaves an independently-pinned node alone.
+    freeModeAutoPinned.clear();
+    liveNodes.forEach(n => {
+      if (n.pinned) return;
+      n.pinned = true;
+      freeModeAutoPinned.add(n.id);
+      const el = nodeEls.get(n.id);
+      if (el) el.classList.add('pinned');
+    });
+    renderLoopList(); // a loop row's pin button reflects whether all its nodes are pinned
+  } else {
+    // turning the toggle back off is what actually resumes the layout
+    // springs for everything this session froze — not just a label flip
+    let releasedAny = false;
+    freeModeAutoPinned.forEach(id => {
+      const n = byId.get(id);
+      if (!n || !n.pinned) return; // gone, or already released by hand (e.g. a loop's pin button) — leave as-is
+      n.pinned = false;
+      const el = nodeEls.get(id);
+      if (el) el.classList.remove('pinned');
+      releasedAny = true;
+    });
+    freeModeAutoPinned.clear();
+    if (releasedAny) { startSim(); renderLoopList(); }
+  }
 }
 
 document.getElementById('free-toggle').addEventListener('click', () => setFreeMode(!freeMode));
@@ -2881,7 +2896,7 @@ function fillList(elId, items, otherId, direction) {
   if (items.length === 0) {
     const li = document.createElement('li');
     li.className = 'detail-empty';
-    li.textContent = '— none —';
+    li.textContent = 'none';
     ul.appendChild(li);
     return;
   }
@@ -3378,6 +3393,167 @@ function showImportStatus(text, isError) {
   showImportStatus._t = setTimeout(() => { importStatus.style.display = 'none'; }, 4000);
 }
 
+// ---- raw .xmile upload: a client-side port of sd.py's parser, so a
+// Vensim-style export can be dropped straight onto the running page
+// instead of needing the CLI (which needs numpy for layout.py's layout —
+// not available in a browser). No positions/levels/loops/history exist in
+// this format, so nodes land at the current default level with random
+// positions the live force simulation (startSim(), already used for drag
+// physics) settles afterward — layout.py's own 700-iteration numpy layout
+// isn't ported, this reuses the settle behavior the page already has. ----
+
+const XMILE_NS = 'http://docs.oasis-open.org/xmile/ns/XMILE/v1.0';
+const XMILE_EQN_RE = /^A FUNCTION OF\(\s*([\s\S]*?)\s*\)\s*$/;
+
+// mirrors sd.py's normalize_name(): trim, unwrap a "quoted" name, turn
+// Vensim's underscore-for-space encoding back into spaces, drop stray
+// escaped/bare quotes and backslashes, collapse whitespace
+function normalizeName(name) {
+  name = name.trim();
+  if (name.length >= 2 && name.startsWith('"') && name.endsWith('"')) {
+    name = name.slice(1, -1);
+  }
+  name = name.replace(/_/g, ' ');
+  name = name.replace(/\\"/g, '"').replace(/"/g, '').replace(/\\/g, '');
+  return name.replace(/\s+/g, ' ').trim();
+}
+
+// mirrors sd.py's _split_arg_list(): comma-splits an "A FUNCTION OF(...)"
+// argument list, respecting "quoted, names" that may contain their own
+// commas, normalizing each surviving token
+function splitArgList(raw) {
+  const args = [];
+  let buf = '';
+  let inQuotes = false;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (ch === '\\' && i + 1 < raw.length) {
+      buf += ch + raw[i + 1];
+      i += 1;
+      continue;
+    }
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+      buf += ch;
+    } else if (ch === ',' && !inQuotes) {
+      args.push(buf);
+      buf = '';
+    } else {
+      buf += ch;
+    }
+  }
+  if (buf) args.push(buf);
+  return args.filter(a => a.trim()).map(normalizeName);
+}
+
+// mirrors sd.py's parse_xmile(): every <aux>'s name becomes a node, its
+// <eqn>'s "A FUNCTION OF(parent, ...)" becomes parent -> node edges; a
+// parent/child that never appears as its own <aux> still becomes a node
+function parseXmile(xmlText) {
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) {
+    throw new Error('Could not parse this as XML.');
+  }
+  const nodes = [];
+  const seen = new Set();
+  const edges = [];
+  const addNode = (n) => { if (!seen.has(n)) { seen.add(n); nodes.push(n); } };
+
+  const auxEls = doc.getElementsByTagNameNS(XMILE_NS, 'aux');
+  for (const auxEl of auxEls) {
+    const rawName = auxEl.getAttribute('name');
+    if (rawName === null) continue;
+    const child = normalizeName(rawName);
+    addNode(child);
+
+    const eqnEl = Array.from(auxEl.children).find(c => c.localName === 'eqn');
+    if (!eqnEl || !eqnEl.textContent) continue;
+    const m = XMILE_EQN_RE.exec(eqnEl.textContent.trim());
+    if (!m) continue;
+    splitArgList(m[1]).forEach(parent => edges.push({ s: parent, t: child }));
+  }
+  edges.forEach(({ s, t }) => { addNode(s); addNode(t); });
+  if (!nodes.length) throw new Error('No variables found in this file.');
+  return { nodes, edges };
+}
+
+// mirrors sd.py's filter_real_component(): drops any connected component
+// (edges treated as undirected) where every node's name ends in " 0" —
+// Vensim's collision-renaming artifact from merging two diagrams into one
+// file — while keeping every other component, however small (a variable
+// with no causal arrows at all is still real content, not a stray to drop)
+function filterRealComponent(nodes, edges) {
+  const parent = new Map(nodes.map(n => [n, n]));
+  const find = (x) => {
+    while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); }
+    return x;
+  };
+  edges.forEach(({ s, t }) => {
+    const rs = find(s), rt = find(t);
+    if (rs !== rt) parent.set(rs, rt);
+  });
+
+  const groups = new Map();
+  nodes.forEach(n => {
+    const root = find(n);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(n);
+  });
+
+  const keep = new Set();
+  let anyReal = false;
+  groups.forEach(comp => {
+    if (comp.some(n => n.endsWith(' 0'))) return; // spurious "_0" duplicate-diagram cluster
+    anyReal = true;
+    comp.forEach(n => keep.add(n));
+  });
+  if (!anyReal) throw new Error('Every variable in this file looks like a duplicate-diagram artifact — nothing to keep.');
+
+  return {
+    nodes: nodes.filter(n => keep.has(n)),
+    edges: edges.filter(({ s, t }) => keep.has(s) && keep.has(t)),
+  };
+}
+
+// turns a raw .xmile file into the same {nodes, edges, levels, log, loops,
+// loopsDropped} shape importGraph() produces, so it drops into the exact
+// same buildGraph() call site — see the comment block above for what's
+// necessarily missing (positions/levels/loops/history) compared to a JSON export
+function xmileToGraph(xmlText) {
+  const parsed = parseXmile(xmlText);
+  const real = filterRealComponent(parsed.nodes, parsed.edges);
+
+  const defaultLevel = levels[0].level;
+  const nodes = real.nodes.map(id => ({
+    id,
+    level: defaultLevel,
+    x: Math.random() * DATA.canvas.w,
+    y: Math.random() * DATA.canvas.h,
+    in: [], out: [],
+  }));
+  const byIdLocal = new Map(nodes.map(n => [n.id, n]));
+
+  const seenEdge = new Set();
+  const edges = [];
+  real.edges.forEach(({ s, t }) => {
+    if (!byIdLocal.has(s) || !byIdLocal.has(t) || s === t) return;
+    const key = s + ' ' + t;
+    if (seenEdge.has(key)) return;
+    seenEdge.add(key);
+    edges.push({ s, t, polarity: null, bend: null });
+    byIdLocal.get(s).out.push(t);
+    byIdLocal.get(t).in.push(s);
+  });
+
+  nodes.forEach(n => { n.r = computeRadius(n); });
+
+  return {
+    nodes, edges,
+    levels: levels.map(l => ({ ...l })),
+    log: [], loops: [], loopsDropped: 0,
+  };
+}
+
 // converts an exported (or hand-edited) file into the shape buildGraph()
 // expects — {nodes:[{id,x,y,r,level,in,out}], edges:[{s,t}], levels} — same
 // derivation build_payload() does in Python, just re-run client-side since
@@ -3466,10 +3642,14 @@ document.getElementById('import-file-input').addEventListener('change', (e) => {
 
   const reader = new FileReader();
   reader.onload = () => {
+    const text = reader.result;
+    // sniff by extension first, falling back to content — catches a
+    // misnamed or extensionless .xmile file the same way either path works
+    const isXmile = file.name.toLowerCase().endsWith('.xmile') || /<xmile[\s>]/i.test(text.slice(0, 2000));
+
     let converted;
     try {
-      const raw = JSON.parse(reader.result);
-      converted = importGraph(raw);
+      converted = isXmile ? xmileToGraph(text) : importGraph(JSON.parse(text));
     } catch (err) {
       showImportStatus(err.message || 'Could not read that file.', true);
       return;
@@ -3477,6 +3657,7 @@ document.getElementById('import-file-input').addEventListener('change', (e) => {
 
     setMergeMode(false);
     buildGraph(converted); // resets loops = [] as part of the rebuild
+    if (isXmile) startSim(); // a .xmile carries no positions — settle the random scatter above
 
     loops = converted.loops;
     renderLoopList();
@@ -3486,14 +3667,20 @@ document.getElementById('import-file-input').addEventListener('change', (e) => {
     // entry, so the panel reads as a continuous timeline across sessions
     changeLog = [];
     converted.log.forEach(text => logChange('history', text));
-    let importMsg = `Loaded ${converted.nodes.length} node(s), ${converted.edges.length} edge(s) from uploaded file`;
-    if (converted.loops.length) importMsg += `, ${converted.loops.length} loop(s)`;
-    if (converted.loopsDropped) importMsg += ` (${converted.loopsDropped} loop(s) dropped — no longer a valid cycle)`;
+
+    let importMsg, statusMsg;
+    if (isXmile) {
+      importMsg = `Loaded ${converted.nodes.length} variable(s), ${converted.edges.length} link(s) from a .xmile file — positions, levels, and loops aren't in that format, so this is a fresh layout at the default level. Assign levels and add feedback loops as usual.`;
+      statusMsg = `Loaded ${converted.nodes.length} variable(s), ${converted.edges.length} link(s) from .xmile — no positions/levels/loops in that format.`;
+    } else {
+      importMsg = `Loaded ${converted.nodes.length} node(s), ${converted.edges.length} edge(s) from uploaded file`;
+      if (converted.loops.length) importMsg += `, ${converted.loops.length} loop(s)`;
+      if (converted.loopsDropped) importMsg += ` (${converted.loopsDropped} loop(s) dropped — no longer a valid cycle)`;
+      statusMsg = `Loaded ${converted.nodes.length} node(s), ${converted.edges.length} edge(s).`;
+      if (converted.loopsDropped) statusMsg += ` ${converted.loopsDropped} loop(s) dropped.`;
+    }
     logChange('import', importMsg);
     pushUndoCheckpoint(importMsg);
-
-    let statusMsg = `Loaded ${converted.nodes.length} node(s), ${converted.edges.length} edge(s).`;
-    if (converted.loopsDropped) statusMsg += ` ${converted.loopsDropped} loop(s) dropped.`;
     showImportStatus(statusMsg);
   };
   reader.onerror = () => showImportStatus('Could not read that file.', true);
