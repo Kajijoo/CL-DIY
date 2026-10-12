@@ -1200,6 +1200,15 @@ input[type="search"]:focus {
         <marker id="arrow-lit" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
           <path d="M0,0 L8,4 L0,8 Z" fill="var(--arrow-lit-color, var(--spotlight))"></path>
         </marker>
+        <!-- one lit arrowhead per loop palette color, so 2+ simultaneously-highlighted loops can each show their own color at once (a single #arrow-lit relies on one shared --arrow-lit-color var, which only ever holds one color) -->
+        <marker id="arrow-lit-1" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 Z" fill="var(--loop-1)"></path></marker>
+        <marker id="arrow-lit-2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 Z" fill="var(--loop-2)"></path></marker>
+        <marker id="arrow-lit-3" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 Z" fill="var(--loop-3)"></path></marker>
+        <marker id="arrow-lit-4" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 Z" fill="var(--loop-4)"></path></marker>
+        <marker id="arrow-lit-5" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 Z" fill="var(--loop-5)"></path></marker>
+        <marker id="arrow-lit-6" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 Z" fill="var(--loop-6)"></path></marker>
+        <marker id="arrow-lit-7" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 Z" fill="var(--loop-7)"></path></marker>
+        <marker id="arrow-lit-8" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 Z" fill="var(--loop-8)"></path></marker>
       </defs>
       <g id="viewport"></g>
     </svg>
@@ -1328,7 +1337,7 @@ let showAllLoops = false;
 let loops = [];
 let loopMode = false, loopPicked = [], loopType = 'R';
 let loopColorSeq = 0, loopIdSeq = 0;
-let highlightedLoopId = null;
+let highlightedLoopIds = new Set(); // multiple loops can be highlighted at once — see toggleLoopHighlight()
 
 // undo stack — see pushUndoCheckpoint()/undo() further down for what
 // actually gets tracked. Declared this early for the same TDZ reason
@@ -1697,7 +1706,7 @@ function buildGraph(sourceData) {
   // to keep loops (the initial page load) restore them separately afterward
   // via restoreLoopsAndLogFrom()
   loops = [];
-  highlightedLoopId = null;
+  highlightedLoopIds = new Set();
   if (loopMode) setLoopMode(false);
   if (freeMode) setFreeMode(false);
   if (addNodeMode) setAddNodeMode(false);
@@ -2151,7 +2160,7 @@ function deleteLoop(id) {
   loops = loops.filter(l => l.id !== id);
   logChange('loop-remove', `Deleted feedback loop "${loop.name}"`);
   pushUndoCheckpoint(`Deleted feedback loop "${loop.name}"`);
-  if (highlightedLoopId === id) clearLoopHighlight();
+  if (highlightedLoopIds.delete(id)) applySelectedLoopsTint();
   renderLoopList();
 }
 
@@ -2160,6 +2169,7 @@ function deleteLoop(id) {
 // longer exists, instead of letting it silently point at stale links
 function pruneInvalidLoops() {
   const survivors = [];
+  let highlightChanged = false;
   loops.forEach(loop => {
     const stillHasNodes = loop.nodes.every(id => byId.has(id));
     const check = stillHasNodes ? validateLoopCycle(loop.nodes) : { ok: false };
@@ -2167,10 +2177,11 @@ function pruneInvalidLoops() {
       survivors.push(loop);
     } else {
       logChange('loop-remove', `Feedback loop "${loop.name}" removed — a link it depended on no longer exists`);
-      if (highlightedLoopId === loop.id) clearLoopHighlight();
+      if (highlightedLoopIds.delete(loop.id)) highlightChanged = true;
     }
   });
   loops = survivors;
+  if (highlightChanged) applySelectedLoopsTint();
   renderLoopList();
 }
 
@@ -2277,10 +2288,10 @@ function renderLoopList() {
   }
   loops.forEach(loop => {
     const li = document.createElement('li');
-    li.className = 'loop-row' + (loop.id === highlightedLoopId ? ' is-active' : '');
+    li.className = 'loop-row' + (highlightedLoopIds.has(loop.id) ? ' is-active' : '');
     li.dataset.loopId = loop.id;
     li.style.setProperty('--loop-color', loop.color);
-    li.addEventListener('click', () => highlightLoop(loop.id));
+    li.addEventListener('click', () => toggleLoopHighlight(loop.id));
 
     const swatch = document.createElement('span');
     swatch.className = 'swatch';
@@ -2315,16 +2326,31 @@ function renderLoopList() {
     const png = document.createElement('button');
     png.className = 'loop-row-png';
     png.innerHTML = PNG_ICON_SVG;
-    png.title = 'Export this loop as a PNG image';
+    png.title = 'Export this loop as a PNG image (exports every currently highlighted loop together if more than one is highlighted)';
     png.addEventListener('click', async (ev) => {
       ev.stopPropagation();
+      // when this loop is part of a multi-loop highlight, export all of
+      // them together rather than just this row's own loop — same button,
+      // context-aware, so no separate "export highlighted loops" control
+      // is needed
+      const exportLoops = (highlightedLoopIds.size > 1 && highlightedLoopIds.has(loop.id))
+        ? loops.filter(l => highlightedLoopIds.has(l.id))
+        : [loop];
+      const nodeIds = Array.from(new Set(exportLoops.flatMap(l => l.nodes))).filter(id => byId.has(id));
+      const tintOverrides = exportLoops.length > 1
+        ? new Map(edgeVisuals.map(e => [e, loopColorsForEdge(e, exportLoops)]).filter(([, c]) => c.length))
+        : null;
       const svgEl = buildExportSvg({
-        nodeIds: loopNodes,
-        edgeFilter: (entry) => edgeInLoop(loop, entry),
-        tintColor: loop.color,
+        nodeIds,
+        edgeFilter: (entry) => exportLoops.some(l => edgeInLoop(l, entry)),
+        tintColor: exportLoops.length === 1 ? loop.color : undefined,
+        tintOverrides,
       });
       const blob = await exportSvgToPngBlob(svgEl);
-      downloadPng(blob, `cld-loop-${slugForFilename(loop.name)}.png`);
+      const filename = exportLoops.length > 1
+        ? `cld-loops-${exportLoops.map(l => slugForFilename(l.name)).join('-')}.png`
+        : `cld-loop-${slugForFilename(loop.name)}.png`;
+      downloadPng(blob, filename);
     });
 
     const rm = document.createElement('button');
@@ -2352,7 +2378,7 @@ document.getElementById('loop-confirm').addEventListener('click', () => {
   const loop = saveLoop(loopPicked.slice(), name, loopType);
   if (loop) {
     setLoopMode(false);
-    highlightLoop(loop.id);
+    toggleLoopHighlight(loop.id);
   } else {
     document.getElementById('loop-name').focus();
   }
@@ -2970,7 +2996,9 @@ function resetSpotlightVisuals() {
   svg.style.removeProperty('--arrow-lit-color');
   nodeEls.forEach(el => { el.style.opacity = ''; });
   labelLayer.querySelectorAll('.node-label').forEach(t => { t.style.opacity = ''; t.style.fontWeight = ''; });
-  edgeVisuals.forEach(({ el, bidir, fwdLabelEl, revLabelEl }) => {
+  edgeVisuals.forEach((entry) => {
+    const { el, bidir, fwdLabelEl, revLabelEl } = entry;
+    if (entry.stripeEls) { entry.stripeEls.forEach(s => s.remove()); entry.stripeEls = null; } // leftover multi-loop stripes from applySelectedLoopsTint()/applyAllLoopsTint()
     el.style.opacity = '';
     if (fwdLabelEl) fwdLabelEl.style.opacity = '';
     if (revLabelEl) revLabelEl.style.opacity = '';
@@ -3009,50 +3037,90 @@ function selectNode(id) {
   document.getElementById('detail').classList.add('open');
 }
 
-// clicking a loop in the right-hand list spotlights just that loop's own
-// nodes and its own consecutive-pair links, tinted with the loop's color —
-// same mechanic as selectNode, just a different node/edge subset and tint
-function highlightLoop(id) {
+// clicking a loop in the right-hand list toggles it into/out of the set of
+// currently-highlighted loops (checkbox-like — any number can be on at
+// once), spotlighting the union of their nodes and each loop's own
+// consecutive-pair links, each tinted in its own color (an edge shared by
+// 2+ highlighted loops gets the same dashed multi-color stripe treatment
+// as "show all loops", via paintEdgeStripes())
+function toggleLoopHighlight(id) {
   const loop = loops.find(l => l.id === id);
   if (!loop) return;
   clearSelection(); // the spotlight mechanisms never run at once
   if (showAllLoops) setShowAllLoops(false);
-  highlightedLoopId = id;
-
-  const nodeSet = new Set(loop.nodes);
-  const pairs = new Set();
-  for (let i = 0; i < loop.nodes.length; i++) {
-    pairs.add(loop.nodes[i] + ' ' + loop.nodes[(i + 1) % loop.nodes.length]);
-  }
-  // a collapsed bidirectional edge's stored s/t may be the *other* direction
-  // from the one the loop actually traverses, so check both orderings for it
-  applySpotlight(nodeSet, (e) => pairs.has(e.s + ' ' + e.t) || (e.bidir && pairs.has(e.t + ' ' + e.s)), nodeSet, loop.color);
+  if (highlightedLoopIds.has(id)) highlightedLoopIds.delete(id);
+  else highlightedLoopIds.add(id);
+  applySelectedLoopsTint();
 
   document.querySelectorAll('.loop-row').forEach(r => {
-    r.classList.toggle('is-active', r.dataset.loopId === id);
+    r.classList.toggle('is-active', highlightedLoopIds.has(r.dataset.loopId));
+  });
+}
+
+// extracts the N from a 'var(--loop-N)' string, to pick the matching
+// per-color lit arrowhead marker (#arrow-lit-N) — same regex idea as
+// resolveLoopColor() below, just for a marker id instead of a resolved color
+function loopColorIndex(varStr) {
+  const m = /--loop-(\d+)/.exec(varStr);
+  return m ? m[1] : '1';
+}
+
+function applySelectedLoopsTint() {
+  if (highlightedLoopIds.size === 0) { resetSpotlightVisuals(); return; }
+  const selectedLoops = loops.filter(l => highlightedLoopIds.has(l.id));
+  const nodeSet = new Set();
+  selectedLoops.forEach(l => l.nodes.forEach(id => nodeSet.add(id)));
+
+  nodeEls.forEach((el, nid) => { el.style.opacity = nodeSet.has(nid) ? '1' : '0.16'; });
+  labelLayer.querySelectorAll('.node-label').forEach(t => {
+    const on = nodeSet.has(t.dataset.id);
+    t.style.opacity = on ? '1' : '0.12';
+    t.style.fontWeight = on ? '700' : '400';
+  });
+
+  edgeVisuals.forEach(entry => {
+    const colors = loopColorsForEdge(entry, selectedLoops);
+    paintEdgeStripes(entry, colors);
+    const op = colors.length ? '1' : '0.07';
+    entry.el.style.opacity = op;
+    if (entry.fwdLabelEl) entry.fwdLabelEl.style.opacity = op;
+    if (entry.revLabelEl) entry.revLabelEl.style.opacity = op;
+    if (colors.length === 1) {
+      entry.el.style.stroke = colors[0];
+      entry.el.style.strokeWidth = '1.8';
+      const marker = `url(#arrow-lit-${loopColorIndex(colors[0])})`;
+      entry.el.setAttribute('marker-end', marker);
+      if (entry.bidir) entry.el.setAttribute('marker-start', marker);
+    } else {
+      // 0 owners (dimmed) or 2+ owners (base stays neutral, stripes carry the color) — either way, no single tint color applies to the base path
+      entry.el.style.stroke = '';
+      entry.el.style.strokeWidth = '';
+      entry.el.setAttribute('marker-end', 'url(#arrow)');
+      if (entry.bidir) entry.el.setAttribute('marker-start', 'url(#arrow)');
+    }
   });
 }
 
 function clearLoopHighlight() {
-  highlightedLoopId = null;
+  highlightedLoopIds.clear();
   resetSpotlightVisuals();
   document.querySelectorAll('.loop-row.is-active').forEach(r => r.classList.remove('is-active'));
 }
 
 // ---- "show all loops": tints every edge that belongs to a saved loop with
-// that loop's color, all at once — unlike highlightLoop(), which only ever
-// shows a single loop. An edge shared by 2+ saved loops cycles through all
-// of their colors as a dashed stripe (see STRIPE_DASH below) rather than
-// picking one or hiding the overlap — which loops share a link is exactly
-// the kind of thing this view exists to surface. Mutually exclusive with
-// node selection and single-loop highlight (both turn this off — see
-// selectNode()/highlightLoop() above); merge/loop-pick/free-arrange/
-// add-node modes are untouched by it, since none of them share this visual
-// channel. ----
+// that loop's color, all at once — unlike toggleLoopHighlight(), which only
+// ever dims/spotlights the loops explicitly picked in the sidebar. An edge
+// shared by 2+ saved loops cycles through all of their colors as a dashed
+// stripe (see STRIPE_DASH below) rather than picking one or hiding the
+// overlap — which loops share a link is exactly the kind of thing this view
+// exists to surface. Mutually exclusive with node selection and loop
+// highlighting (both turn this off — see selectNode()/toggleLoopHighlight()
+// above); merge/loop-pick/free-arrange/add-node modes are untouched by it,
+// since none of them share this visual channel. ----
 
 // true if this edge's endpoints are a consecutive pair in loop's cycle,
 // checked both orderings for a collapsed bidirectional edge — same
-// reasoning as highlightLoop()'s isEdgeLit predicate
+// reasoning as applySelectedLoopsTint()'s per-edge color lookup
 function edgeInLoop(loop, entry) {
   for (let i = 0; i < loop.nodes.length; i++) {
     const a = loop.nodes[i], b = loop.nodes[(i + 1) % loop.nodes.length];
@@ -3061,17 +3129,19 @@ function edgeInLoop(loop, entry) {
   return false;
 }
 
-// every saved loop's color this edge belongs to, in loop order (possibly
-// empty, possibly more than one — a shared link is common in a real CLD)
-function loopColorsForEdge(entry) {
-  return loops.filter(loop => edgeInLoop(loop, entry)).map(loop => loop.color);
+// every loop in loopSubset (default: every saved loop) this edge belongs
+// to, in that subset's order (possibly empty, possibly more than one — a
+// shared link is common in a real CLD). Callers pass a narrower subset to
+// restrict to just the loops currently highlighted/being exported.
+function loopColorsForEdge(entry, loopSubset = loops) {
+  return loopSubset.filter(loop => edgeInLoop(loop, entry)).map(loop => loop.color);
 }
 
-// shared by the live "show all loops" overlay and the PNG-export mirror of
-// it: a stripe cycle's dash length in px, and the dasharray/dashoffset for
-// the i-th of n colors sharing one edge, so a run of them interleaves into
-// a single repeating multi-color stripe along the same path geometry
-// instead of n solid lines stacked on top of each other.
+// shared by the live "show all loops"/multi-loop-highlight overlays and the
+// PNG-export mirror of them: a stripe cycle's dash length in px, and the
+// dasharray/dashoffset for the i-th of n colors sharing one edge, so a run
+// of them interleaves into a single repeating multi-color stripe along the
+// same path geometry instead of n solid lines stacked on top of each other.
 const STRIPE_DASH = 7;
 function stripeDashArray(n) {
   return `${STRIPE_DASH} ${STRIPE_DASH * (n - 1)}`;
@@ -3080,40 +3150,47 @@ function stripeDashOffset(i) {
   return String(i * STRIPE_DASH);
 }
 
-function applyAllLoopsTint() {
-  // full recompute every call (cheap at this graph's size), same philosophy
-  // rebuildEdgeVisuals() already applies to the edge set generally — clear
-  // any previous stripe overlays before either re-tinting or resetting
-  edgeVisuals.forEach(entry => {
-    if (entry.stripeEls) { entry.stripeEls.forEach(el => el.remove()); entry.stripeEls = null; }
+// paints (or clears) entry's dashed multi-color stripe overlay for a
+// 2+-owner edge — shared by applyAllLoopsTint() and applySelectedLoopsTint()
+// so the two overlays can't drift apart. Always clears any prior stripes
+// first; rebuilds them only when colors has 2+ entries (a 0- or 1-color
+// edge is tinted via its own single stroke instead, by the caller).
+function paintEdgeStripes(entry, colors) {
+  if (entry.stripeEls) { entry.stripeEls.forEach(el => el.remove()); entry.stripeEls = null; }
+  if (colors.length < 2) return;
+  // 2+ owners: leave the base path exactly as its plain default (stroke
+  // untouched by the caller) so its arrowhead marker keeps painting
+  // normally — SVG markers aren't guaranteed to render on an unstroked
+  // path — and layer n dashed, offset stripes on top of the same geometry,
+  // no markers on them, so together they cover the line in a repeating
+  // color cycle.
+  const d = entry.el.getAttribute('d');
+  entry.stripeEls = colors.map((color, i) => {
+    const stripe = document.createElementNS(svgNS, 'path');
+    stripe.setAttribute('class', 'edge-path edge-stripe');
+    stripe.setAttribute('d', d);
+    stripe.setAttribute('fill', 'none');
+    stripe.style.stroke = color;
+    stripe.style.strokeWidth = '2.2';
+    stripe.setAttribute('stroke-dasharray', stripeDashArray(colors.length));
+    stripe.setAttribute('stroke-dashoffset', stripeDashOffset(i));
+    entry.el.insertAdjacentElement('afterend', stripe);
+    return stripe;
   });
-  if (!showAllLoops) { resetSpotlightVisuals(); return; }
+}
+
+function applyAllLoopsTint() {
+  if (!showAllLoops) { resetSpotlightVisuals(); return; } // that also clears any stripe overlay left over from this or applySelectedLoopsTint()
+  // full recompute every call (cheap at this graph's size), same philosophy
+  // rebuildEdgeVisuals() already applies to the edge set generally
   edgeVisuals.forEach(entry => {
     const colors = loopColorsForEdge(entry);
+    paintEdgeStripes(entry, colors);
     if (colors.length <= 1) {
       const tint = colors[0] || '';
       entry.el.style.stroke = tint;
       entry.el.style.strokeWidth = tint ? '1.8' : '';
-      return;
     }
-    // 2+ owners: leave the base path exactly as its plain default (stroke
-    // untouched) so its arrowhead marker keeps painting normally — SVG
-    // markers aren't guaranteed to render on an unstroked path — and layer
-    // n dashed, offset stripes on top of the same geometry, no markers on
-    // them, so together they cover the line in a repeating color cycle.
-    const d = entry.el.getAttribute('d');
-    entry.stripeEls = colors.map((color, i) => {
-      const stripe = document.createElementNS(svgNS, 'path');
-      stripe.setAttribute('class', 'edge-path edge-stripe');
-      stripe.setAttribute('d', d);
-      stripe.setAttribute('fill', 'none');
-      stripe.style.stroke = color;
-      stripe.style.strokeWidth = '2.2';
-      stripe.setAttribute('stroke-dasharray', stripeDashArray(colors.length));
-      stripe.setAttribute('stroke-dashoffset', stripeDashOffset(i));
-      entry.el.insertAdjacentElement('afterend', stripe);
-      return stripe;
-    });
   });
 }
 
@@ -3378,6 +3455,29 @@ window.addEventListener('keydown', (e) => {
 // function — nodeIds/edgeFilter narrow what's included; tintColor (single
 // loop) or tintOverrides (the "show all loops" overlay) color the edges.
 function buildExportSvg({ nodeIds, edgeFilter, tintColor, tintOverrides }) {
+  // cloneWithBakedStyle() below bakes each node/label's *current* computed
+  // opacity — if some other loop (or a selected node) is currently
+  // spotlighted on the live page, a node this export includes but that
+  // spotlight doesn't may be sitting at the live page's dimmed opacity
+  // (e.g. 0.16) right now, which would otherwise get baked into this
+  // export even though it has nothing to do with what's being exported
+  // here. Clear whatever's live, build the export, then restore it exactly
+  // — all synchronously, so nothing repaints in between and the user never
+  // sees a flash.
+  const hadLoopHighlight = highlightedLoopIds.size > 0;
+  const hadAllLoopsTint = showAllLoops;
+  const hadSelection = selected !== null;
+  if (hadLoopHighlight || hadAllLoopsTint || hadSelection) resetSpotlightVisuals();
+  try {
+    return buildExportSvgInner({ nodeIds, edgeFilter, tintColor, tintOverrides });
+  } finally {
+    if (hadLoopHighlight) applySelectedLoopsTint();
+    else if (hadAllLoopsTint) applyAllLoopsTint();
+    else if (hadSelection) selectNode(selected);
+  }
+}
+
+function buildExportSvgInner({ nodeIds, edgeFilter, tintColor, tintOverrides }) {
   const nodeIdSet = new Set(nodeIds);
   const PAD = 36;
 
