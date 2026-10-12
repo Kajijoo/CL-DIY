@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+
+# Archive
+archive/
+
+# Paper
+paper/
+JOSS_TODO.md
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# JOSS paper build output (openjournals/inara)
+paper/paper.pdf
+paper/paper.jats/
+paper/*.crossref
+paper/*.preprint.*
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
