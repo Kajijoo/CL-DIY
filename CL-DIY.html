@@ -977,7 +977,7 @@ input[type="search"]:focus {
       <button class="zoom-btn" id="reset-layout" aria-label="Reset node positions" title="Reset node positions and any dragged edge bends (also releases all pins)">
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="2.5" width="6" height="6" rx="1.2"/><rect x="11.5" y="2.5" width="6" height="6" rx="1.2"/><rect x="2.5" y="11.5" width="6" height="6" rx="1.2"/><rect x="11.5" y="11.5" width="6" height="6" rx="1.2"/></svg>
       </button>
-      <button class="zoom-btn" id="free-toggle" data-active="0" aria-label="Free-arrange mode" title="Free-arrange mode: freezes every node in place, freed from the layout springs, so you can drag anything without the rest chasing after it. Toggle off to resume the layout springs.">
+      <button class="zoom-btn" id="free-toggle" data-active="0" aria-label="Free-arrange mode" title="Free-arrange mode: freezes every node in place, freed from the layout springs, so you can drag anything without the rest chasing after it. On by default. Toggle off to resume the layout springs.">
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="7" r="3.4"/><path d="M10 10.4 L10 17.5"/></svg>
       </button>
       <button class="zoom-btn" id="export-png-btn" aria-label="Export diagram as PNG" title="Export the whole diagram as a PNG image (includes the &quot;show all loops&quot; overlay if it's on)">
@@ -1461,7 +1461,7 @@ function buildGraph(sourceData) {
   loops = [];
   highlightedLoopIds = new Set();
   if (loopMode) setLoopMode(false);
-  if (freeMode) setFreeMode(false);
+  if (freeMode) setFreeMode(true); // stays on across a rebuild — re-sweep so the fresh node objects are pinned too
   if (addNodeMode) setAddNodeMode(false);
   if (showAllLoops) setShowAllLoops(false);
   renderLoopList();
@@ -1667,9 +1667,8 @@ function showAddNodeStatus(text, isError) {
 
 function setAddNodeMode(on) {
   if (on) {
-    if (mergeMode) setMergeMode(false); // every picking/pinning/creating mode is mutually exclusive
+    if (mergeMode) setMergeMode(false); // every picking/creating mode is mutually exclusive (free-arrange isn't one — it stays as-is)
     if (loopMode) setLoopMode(false);
-    if (freeMode) setFreeMode(false);
   }
   addNodeMode = on;
   document.getElementById('add-node-toggle').dataset.active = on ? '1' : '0';
@@ -1698,8 +1697,7 @@ document.getElementById('add-node-name').addEventListener('keydown', (e) => {
 });
 
 function setMergeMode(on) {
-  if (on && loopMode) setLoopMode(false); // the picking/pinning modes are mutually exclusive
-  if (on && freeMode) setFreeMode(false);
+  if (on && loopMode) setLoopMode(false); // the picking modes are mutually exclusive
   if (on && addNodeMode) setAddNodeMode(false);
   mergeMode = on;
   document.getElementById('merge-toggle').dataset.active = on ? '1' : '0';
@@ -1793,8 +1791,7 @@ document.getElementById('merge-confirm').addEventListener('click', () => {
 
 // ---- feedback-loop annotation ----
 function setLoopMode(on) {
-  if (on && mergeMode) setMergeMode(false); // the picking/pinning modes are mutually exclusive
-  if (on && freeMode) setFreeMode(false);
+  if (on && mergeMode) setMergeMode(false); // the picking modes are mutually exclusive
   if (on && addNodeMode) setAddNodeMode(false);
   loopMode = on;
   document.getElementById('loop-toggle').dataset.active = on ? '1' : '0';
@@ -2668,10 +2665,9 @@ function setPinned(id, pinned) {
   renderLoopList(); // a loop row's pin button reflects whether all its nodes are pinned
 }
 
+// independent of the merge/loop/add-node modes — those only change what a
+// click does, so picking nodes for a merge never unfreezes the diagram
 function setFreeMode(on) {
-  if (on && mergeMode) setMergeMode(false); // the picking/pinning modes are mutually exclusive
-  if (on && loopMode) setLoopMode(false);
-  if (on && addNodeMode) setAddNodeMode(false);
   freeMode = on;
   document.getElementById('free-toggle').dataset.active = on ? '1' : '0';
   stage.classList.toggle('free-arrange', on);
@@ -2709,6 +2705,9 @@ function setFreeMode(on) {
 }
 
 document.getElementById('free-toggle').addEventListener('click', () => setFreeMode(!freeMode));
+// physics off by default: the page opens with every node frozen where the
+// layout put it — toggle free-arrange off to let the springs run
+setFreeMode(true);
 
 // ---- selection / spotlight ----
 // shared dim/undim mechanic behind both single-node selection and
@@ -3757,7 +3756,9 @@ document.getElementById('import-file-input').addEventListener('change', (e) => {
 
     setMergeMode(false);
     buildGraph(converted); // resets loops = [] as part of the rebuild
-    if (isXmile) startSim(); // a .xmile carries no positions — settle the random scatter above
+    // a .xmile carries no positions — settle the random scatter above (which
+    // needs the physics running, so free-arrange has to come off for it)
+    if (isXmile) { setFreeMode(false); startSim(); }
 
     loops = converted.loops;
     renderLoopList();
