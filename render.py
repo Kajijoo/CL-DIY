@@ -1037,6 +1037,8 @@ input[type="search"]:focus {
   gap: 10px;
   box-shadow: var(--shadow);
 }
+.png-option-row { display: flex; flex-direction: column; gap: 4px; }
+.png-option-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
 .export-textarea {
   width: 100%;
   height: 240px;
@@ -1180,13 +1182,29 @@ input[type="search"]:focus {
 
   <div class="export-modal" id="png-export-modal" style="display:none">
     <div class="export-modal-box">
-      <p class="level-heading">Exported PNG</p>
+      <p class="level-heading">Export PNG</p>
+      <div class="png-option-row">
+        <span class="png-option-label">Link signs</span>
+        <div class="loop-type-grid">
+          <button class="loop-type-toggle" type="button" data-png-polarity="1">Show +/−</button>
+          <button class="loop-type-toggle" type="button" data-png-polarity="0">Hide +/−</button>
+        </div>
+      </div>
+      <div class="png-option-row">
+        <span class="png-option-label">Background</span>
+        <div class="loop-type-grid">
+          <button class="loop-type-toggle" type="button" data-png-bg="white">White</button>
+          <button class="loop-type-toggle" type="button" data-png-bg="transparent">Transparent</button>
+        </div>
+      </div>
+      <img id="png-export-img" alt="Preview of the exported diagram" style="max-width:100%; max-height:50vh; object-fit:contain; border:1px solid var(--line); border-radius:3px; background:repeating-conic-gradient(var(--line-soft) 0% 25%, transparent 0% 50%) 0 0/16px 16px;" />
       <p class="restore-note">
-        A direct download may be blocked by this page's sandbox — right-click
-        (or long-press on mobile) the image below and choose "Save Image As…".
+        Links with no polarity set never show a sign. If the download doesn't
+        start (this page's sandbox may block it), right-click or long-press
+        the preview and choose "Save Image As…".
       </p>
-      <img id="png-export-img" alt="Exported diagram" style="max-width:100%; border:1px solid var(--line); border-radius:3px; background:repeating-conic-gradient(var(--line-soft) 0% 25%, transparent 0% 50%) 0 0/16px 16px;" />
       <div class="detail-actions">
+        <button class="confirm-btn" id="png-export-download" disabled>Download</button>
         <button class="clear-btn" id="png-export-close">Close</button>
       </div>
     </div>
@@ -1230,9 +1248,6 @@ input[type="search"]:focus {
       </button>
       <button class="zoom-btn" id="export-png-btn" aria-label="Export diagram as PNG" title="Export the whole diagram as a PNG image (includes the &quot;show all loops&quot; overlay if it's on)">
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3" width="15" height="14" rx="1.6"/><circle cx="7" cy="7.5" r="1.6"/><path d="M17 12.5 L12.5 8.5 L4 16"/></svg>
-      </button>
-      <button class="zoom-btn" id="png-polarity-toggle" data-active="1" aria-label="Show link polarity in PNG exports" aria-pressed="true" title="Show +/− link polarity signs in PNG exports (links with no polarity set never show a sign in an export)">
-        <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7 L11 7 M8 4 L8 10 M9 15 L15 15"/></svg>
       </button>
     </div>
   </main>
@@ -2433,7 +2448,7 @@ function renderLoopList() {
     png.className = 'loop-row-png';
     png.innerHTML = PNG_ICON_SVG;
     png.title = 'Export this loop as a PNG image (exports every currently highlighted loop together if more than one is highlighted)';
-    png.addEventListener('click', async (ev) => {
+    png.addEventListener('click', (ev) => {
       ev.stopPropagation();
       // when this loop is part of a multi-loop highlight, export all of
       // them together rather than just this row's own loop — same button,
@@ -2446,17 +2461,15 @@ function renderLoopList() {
       const tintOverrides = exportLoops.length > 1
         ? new Map(edgeVisuals.map(e => [e, loopColorsForEdge(e, exportLoops)]).filter(([, c]) => c.length))
         : null;
-      const svgEl = buildExportSvg({
+      const filename = exportLoops.length > 1
+        ? `cld-loops-${exportLoops.map(l => slugForFilename(l.name)).join('-')}.png`
+        : `cld-loop-${slugForFilename(loop.name)}.png`;
+      openPngExport(() => buildExportSvg({
         nodeIds,
         edgeFilter: (entry) => exportLoops.some(l => edgeInLoop(l, entry)),
         tintColor: exportLoops.length === 1 ? loop.color : undefined,
         tintOverrides,
-      });
-      const blob = await exportSvgToPngBlob(svgEl);
-      const filename = exportLoops.length > 1
-        ? `cld-loops-${exportLoops.map(l => slugForFilename(l.name)).join('-')}.png`
-        : `cld-loop-${slugForFilename(loop.name)}.png`;
-      downloadPng(blob, filename);
+      }), filename);
     });
 
     const rm = document.createElement('button');
@@ -3747,7 +3760,9 @@ function cloneWithBakedStyle(el) {
 
 const EXPORT_UPSCALE = 3; // crisp output for pasting into slides/docs
 
-function exportSvgToPngBlob(svgEl) {
+// background: 'transparent' paints nothing behind the diagram, or a CSS
+// color (e.g. 'white') fills the whole canvas first
+function exportSvgToPngBlob(svgEl, background) {
   return new Promise((resolve, reject) => {
     const w = Number(svgEl.getAttribute('width')), h = Number(svgEl.getAttribute('height'));
     const xml = new XMLSerializer().serializeToString(svgEl);
@@ -3759,7 +3774,10 @@ function exportSvgToPngBlob(svgEl) {
       canvas.width = Math.max(1, Math.round(w * EXPORT_UPSCALE));
       canvas.height = Math.max(1, Math.round(h * EXPORT_UPSCALE));
       const ctx = canvas.getContext('2d');
-      // transparent background — nothing painted behind the diagram
+      if (background && background !== 'transparent') {
+        ctx.fillStyle = background;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('toBlob failed')), 'image/png');
     };
@@ -3768,9 +3786,8 @@ function exportSvgToPngBlob(svgEl) {
   });
 }
 
-// same try-a-real-download-then-guaranteed-fallback philosophy as the JSON
-// export above — PNG is binary, so the fallback shows the image in a modal
-// (right-click/long-press to save) instead of a copyable textarea
+// a real download attempt — if the page's sandbox blocks it, the export
+// dialog's preview image stays open to right-click/long-press and save
 function downloadPng(blob, filename) {
   try {
     const url = URL.createObjectURL(blob);
@@ -3782,50 +3799,101 @@ function downloadPng(blob, filename) {
     a.remove();
     URL.revokeObjectURL(url);
   } catch (err) {
-    // ignore — the modal fallback below is guaranteed
+    // ignore — the dialog's preview is the fallback
   }
-  const reader = new FileReader();
-  reader.onload = () => {
-    document.getElementById('png-export-img').src = reader.result;
-    document.getElementById('png-export-modal').style.display = 'flex';
-  };
-  reader.readAsDataURL(blob); // not the already-revoked object URL above — this works even when the real download attempt succeeded
 }
 
-// whether PNG exports (whole diagram and per-loop) include the +/− badges
-let exportShowPolarity = true;
-document.getElementById('png-polarity-toggle').addEventListener('click', (ev) => {
-  exportShowPolarity = !exportShowPolarity;
-  ev.currentTarget.dataset.active = exportShowPolarity ? '1' : '0';
-  ev.currentTarget.setAttribute('aria-pressed', String(exportShowPolarity));
+// ---- PNG export dialog: every PNG button (whole diagram, per loop) opens
+// this first, with a live preview, instead of downloading straight away.
+// The two options persist for the rest of the session. ----
+let exportShowPolarity = true;  // whether exports include the +/− badges (read by buildExportSvgInner)
+let exportBackground = 'white'; // 'white' or 'transparent'
+let pngExportPending = null;    // { build, filename, blob } for the dialog currently open
+let pngPreviewSeq = 0;          // drops a stale preview if the options change mid-render
+
+const pngExportModal = document.getElementById('png-export-modal');
+const pngExportImg = document.getElementById('png-export-img');
+const pngExportDownloadBtn = document.getElementById('png-export-download');
+
+// build() returns the export SVG — called again whenever an option changes,
+// so it must read the diagram fresh rather than reuse one SVG
+function openPngExport(build, filename) {
+  pngExportPending = { build, filename, blob: null };
+  syncPngOptionButtons();
+  pngExportModal.style.display = 'flex';
+  renderPngPreview();
+}
+
+async function renderPngPreview() {
+  if (!pngExportPending) return;
+  const seq = ++pngPreviewSeq;
+  pngExportDownloadBtn.disabled = true;
+  const blob = await exportSvgToPngBlob(pngExportPending.build(), exportBackground);
+  if (seq !== pngPreviewSeq || !pngExportPending) return;
+  pngExportPending.blob = blob;
+  // a data URL, not an object URL, so right-click "Save Image As…" works
+  // even after the dialog's state moves on
+  const reader = new FileReader();
+  reader.onload = () => { if (seq === pngPreviewSeq) pngExportImg.src = reader.result; };
+  reader.readAsDataURL(blob);
+  pngExportDownloadBtn.disabled = false;
+}
+
+function syncPngOptionButtons() {
+  pngExportModal.querySelectorAll('[data-png-polarity]').forEach(b => {
+    b.dataset.active = (b.dataset.pngPolarity === '1') === exportShowPolarity ? '1' : '0';
+  });
+  pngExportModal.querySelectorAll('[data-png-bg]').forEach(b => {
+    b.dataset.active = b.dataset.pngBg === exportBackground ? '1' : '0';
+  });
+}
+
+pngExportModal.querySelectorAll('[data-png-polarity]').forEach(b => b.addEventListener('click', () => {
+  exportShowPolarity = b.dataset.pngPolarity === '1';
+  syncPngOptionButtons();
+  renderPngPreview();
+}));
+pngExportModal.querySelectorAll('[data-png-bg]').forEach(b => b.addEventListener('click', () => {
+  exportBackground = b.dataset.pngBg;
+  syncPngOptionButtons();
+  renderPngPreview();
+}));
+
+function closePngExport() {
+  pngExportPending = null;
+  pngPreviewSeq++;
+  pngExportModal.style.display = 'none';
+  pngExportImg.removeAttribute('src');
+}
+
+pngExportDownloadBtn.addEventListener('click', () => {
+  if (!pngExportPending || !pngExportPending.blob) return;
+  // the dialog stays open afterward — a sandbox-blocked download fails
+  // silently, so the preview has to remain available to save by hand
+  downloadPng(pngExportPending.blob, pngExportPending.filename);
 });
 
 function slugForFilename(name) {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'diagram';
 }
 
-document.getElementById('export-png-btn').addEventListener('click', async () => {
-  const tintOverrides = showAllLoops ? new Map(edgeVisuals.map(e => [e, loopColorsForEdge(e)]).filter(([, c]) => c.length)) : null;
-  const svgEl = buildExportSvg({
-    nodeIds: liveNodes.map(n => n.id),
-    edgeFilter: () => true,
-    tintOverrides,
-  });
-  const blob = await exportSvgToPngBlob(svgEl);
-  downloadPng(blob, 'cld-diagram.png');
+document.getElementById('export-png-btn').addEventListener('click', () => {
+  openPngExport(() => {
+    const tintOverrides = showAllLoops ? new Map(edgeVisuals.map(e => [e, loopColorsForEdge(e)]).filter(([, c]) => c.length)) : null;
+    return buildExportSvg({
+      nodeIds: liveNodes.map(n => n.id),
+      edgeFilter: () => true,
+      tintOverrides,
+    });
+  }, 'cld-diagram.png');
 });
 
-const pngExportModal = document.getElementById('png-export-modal');
-document.getElementById('png-export-close').addEventListener('click', () => {
-  pngExportModal.style.display = 'none';
-});
+document.getElementById('png-export-close').addEventListener('click', closePngExport);
 pngExportModal.addEventListener('click', (e) => {
-  if (e.target === pngExportModal) pngExportModal.style.display = 'none';
+  if (e.target === pngExportModal) closePngExport();
 });
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && pngExportModal.style.display !== 'none') {
-    pngExportModal.style.display = 'none';
-  }
+  if (e.key === 'Escape' && pngExportModal.style.display !== 'none') closePngExport();
 });
 
 // ---- import ----
