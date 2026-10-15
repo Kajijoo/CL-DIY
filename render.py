@@ -943,7 +943,6 @@ input[type="search"]:focus {
 .node-label {
   font-family: 'Public Sans', sans-serif;
   font-size: 10.5px;
-  text-anchor: middle;
   pointer-events: none;
 }
 .node-dot { cursor: grab; stroke: var(--panel); stroke-width: 1.4; touch-action: none; }
@@ -1231,6 +1230,9 @@ input[type="search"]:focus {
       </button>
       <button class="zoom-btn" id="export-png-btn" aria-label="Export diagram as PNG" title="Export the whole diagram as a PNG image (includes the &quot;show all loops&quot; overlay if it's on)">
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3" width="15" height="14" rx="1.6"/><circle cx="7" cy="7.5" r="1.6"/><path d="M17 12.5 L12.5 8.5 L4 16"/></svg>
+      </button>
+      <button class="zoom-btn" id="png-polarity-toggle" data-active="1" aria-label="Show link polarity in PNG exports" aria-pressed="true" title="Show +/− link polarity signs in PNG exports (links with no polarity set never show a sign in an export)">
+        <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7 L11 7 M8 4 L8 10 M9 15 L15 15"/></svg>
       </button>
     </div>
   </main>
@@ -1751,6 +1753,9 @@ function createNodeEl(n) {
 
   const t = document.createElementNS(svgNS, 'text');
   t.setAttribute('class', 'node-label');
+  // an attribute, not CSS — the PNG export clones this into a detached
+  // SVG without the page's stylesheet, so a CSS-only centering is lost there
+  t.setAttribute('text-anchor', 'middle');
   t.dataset.id = n.id;
   t.dataset.level = n.level;
   labelLayer.appendChild(t);
@@ -3663,9 +3668,14 @@ function buildExportSvgInner({ nodeIds, edgeFilter, tintColor, tintOverrides }) 
         edgeLayerOut.appendChild(stripe);
       });
     }
-    [entry.fwdLabelEl, entry.revLabelEl].forEach(labelEl => {
-      if (labelEl) polarityLayerOut.appendChild(cloneWithBakedStyle(labelEl));
-    });
+    // only assigned polarities make it into an export — the neutral "unset"
+    // badge is an on-canvas editing affordance, not part of the diagram —
+    // and none at all when the toolbar's ± toggle is off
+    if (exportShowPolarity) {
+      [entry.fwdLabelEl, entry.revLabelEl].forEach(labelEl => {
+        if (labelEl && labelEl.dataset.polarity) polarityLayerOut.appendChild(cloneWithBakedStyle(labelEl));
+      });
+    }
   });
   out.appendChild(edgeLayerOut);
 
@@ -3781,6 +3791,14 @@ function downloadPng(blob, filename) {
   };
   reader.readAsDataURL(blob); // not the already-revoked object URL above — this works even when the real download attempt succeeded
 }
+
+// whether PNG exports (whole diagram and per-loop) include the +/− badges
+let exportShowPolarity = true;
+document.getElementById('png-polarity-toggle').addEventListener('click', (ev) => {
+  exportShowPolarity = !exportShowPolarity;
+  ev.currentTarget.dataset.active = exportShowPolarity ? '1' : '0';
+  ev.currentTarget.setAttribute('aria-pressed', String(exportShowPolarity));
+});
 
 function slugForFilename(name) {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'diagram';
