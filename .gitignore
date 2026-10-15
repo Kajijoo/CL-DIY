@@ -19,6 +19,9 @@ archive/
 paper/
 JOSS_TODO.md
 
+# Local design guidelines
+DESIGN_GUIDELINES.md
+
 # Local Claude Code settings
 .claude/settings.local.json
 

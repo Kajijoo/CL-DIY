@@ -1,17 +1,17 @@
 """
-CL-DIY — render a causal loop diagram (CLD) as a self-contained,
+CL-DIY - render a causal loop diagram (CLD) as a self-contained,
 interactive HTML page: free-arrange nodes, editable levels, link polarity,
 feedback-loop annotation, PNG export, undo, all client-side, no server.
 
 Accepts either a .xmile source (a Vensim-style export, parsed via sd.py and
 force-directed-laid-out via layout.py) or an already-edited graph export
-(.json — the shape the app's own "Download edited graph" button produces:
+(.json - the shape the app's own "Download edited graph" button produces:
 positions, levels, loops and the change log already baked in, rendered
-as-is with no re-layout). With no argument, renders empty.json — a blank
-starting diagram — so `python render.py` on its own gives you a working
+as-is with no re-layout). With no argument, renders empty.json - a blank
+starting diagram - so `python render.py` on its own gives you a working
 empty canvas to build a new CLD in.
 
-Usage (needs the project .venv — numpy isn't in system Python, and there's
+Usage (needs the project .venv - numpy isn't in system Python, and there's
 no bare `python` on PATH here, only `python3`):
     .venv/bin/python render.py                       # blank starter -> cld.html
     .venv/bin/python render.py my-diagram.xmile out.html
@@ -83,7 +83,7 @@ def build_payload(xmile_path: str) -> dict:
 
 def _sanitize_levels(raw_levels: object) -> list[dict] | None:
     """Validate a graph export's own "levels" array (a diagram's levels are
-    fully user-editable in the app — see node_levels.py) into the same
+    fully user-editable in the app - see node_levels.py) into the same
     shape LEVEL_META produces. Returns None if raw_levels isn't usable, so
     the caller can fall back to the built-in default palette."""
     if not isinstance(raw_levels, list):
@@ -115,7 +115,7 @@ def _sanitize_levels(raw_levels: object) -> list[dict] | None:
 
 
 def build_payload_from_json(json_path: str) -> dict:
-    """Build the page payload directly from an exported/edited graph JSON —
+    """Build the page payload directly from an exported/edited graph JSON -
     the shape the app's own "Download edited graph (.json)" button produces:
     {nodes:[{id,level,x,y}], edges:[{source,target[,polarity]}], loops, log}.
     No layout pass: positions are already baked in. Mirrors importGraph() in
@@ -125,7 +125,7 @@ def build_payload_from_json(json_path: str) -> dict:
     """
     raw = json.loads(Path(json_path).read_text())
     if not isinstance(raw.get("nodes"), list) or not isinstance(raw.get("edges"), list):
-        raise ValueError(f"{json_path}: not a recognized graph export — missing 'nodes'/'edges' arrays.")
+        raise ValueError(f"{json_path}: not a recognized graph export - missing 'nodes'/'edges' arrays.")
 
     levels_payload = _sanitize_levels(raw.get("levels")) or [
         {"level": lvl, "key": meta["key"], "label": meta["label"], "color": meta["color"]}
@@ -162,7 +162,7 @@ def build_payload_from_json(json_path: str) -> dict:
             {"id": node_id, "x": round(x, 1), "y": round(y, 1), "level": level, "in": [], "out": []}
         )
     # an empty nodes list is a legitimate starting point (a brand-new,
-    # blank diagram) — not an error
+    # blank diagram) - not an error
 
     by_id = {n["id"]: n for n in nodes_payload}
     seen_edge: set[tuple[str, str]] = set()
@@ -245,7 +245,8 @@ def render(path: str) -> str:
     return html
 
 
-TEMPLATE = r"""<title>CL-DIY — causal loop diagram</title>
+TEMPLATE = r"""<meta charset="utf-8">
+<title>CL-DIY - causal loop diagram</title>
 <style>
 @font-face {
   font-family: 'Public Sans';
@@ -290,16 +291,16 @@ TEMPLATE = r"""<title>CL-DIY — causal loop diagram</title>
   --spotlight: #cf4520;
   --edge: #8b9179;
   --shadow: 0 1px 2px rgba(32,36,29,0.08);
-  /* feedback-loop identity colors — the standard 8-hue categorical palette,
+  /* feedback-loop identity colors - the standard 8-hue categorical palette,
      in the reference's own validated slot order (blue, orange, aqua,
-     yellow, magenta, green, violet, red — that specific interleaving is
+     yellow, magenta, green, violet, red - that specific interleaving is
      what keeps orange and green, a known-confusable pair under red-green
      colorblindness, well separated instead of adjacent). Loop 1/2/6
      (blue/orange/green) reuse hue families already on this canvas (blue =
      level swatches, orange = spotlight, green = accent) but at
      lightness steps distinct from those specific uses. Validated with the
      dataviz skill's validate_palette.py in both modes: all checks pass
-     (one pre-existing WARN carried over from the original 5 — 3 colors
+     (one pre-existing WARN carried over from the original 5 - 3 colors
      read below 3:1 contrast on their own, mitigated by always pairing a
      swatch with a text label, which this UI already does everywhere). */
   --loop-1: #1c5cab;
@@ -613,7 +614,7 @@ input[type="search"]:focus {
   gap: 10px;
   /* A node's in/out lists already self-cap at max-height 140px with their
      own scrollbar, so this panel's natural height is bounded. But as a
-     flex child it still defaulted to shrinkable — with min-height:0 it
+     flex child it still defaulted to shrinkable - with min-height:0 it
      could get squeezed by the sidebar's other content below its own
      (already-bounded) size, and the overflow spilled visibly into the
      hint text and buttons underneath instead of the sidebar scrolling.
@@ -938,7 +939,7 @@ input[type="search"]:focus {
 .stage.grabbing { cursor: grabbing; }
 .stage svg { width: 100%; height: 100%; display: block; }
 
-/* the name sits inside its node box — fill is set inline per node (see
+/* the name sits inside its node box - fill is set inline per node (see
    paintNode()) so it stays legible against whatever color its level has */
 .node-label {
   font-family: 'Public Sans', sans-serif;
@@ -951,7 +952,7 @@ input[type="search"]:focus {
 .stage.free-arrange .node-dot.dragging { cursor: grabbing; }
 .edge-path { fill: none; stroke: var(--edge); stroke-width: 1; }
 .arrowhead { fill: var(--edge); }
-/* wide, invisible sibling of .edge-path — the visible line is only 1-2px,
+/* wide, invisible sibling of .edge-path - the visible line is only 1-2px,
    too thin to reliably grab (to drag-bend it) or hover (to reveal its
    polarity badge), so all pointer interaction targets this instead */
 .edge-hit {
@@ -1009,7 +1010,7 @@ input[type="search"]:focus {
 .zoom-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .zoom-btn:disabled:hover { border-color: var(--line); color: var(--ink); }
 
-/* small inline-drawn icons — currentColor SVG, not text glyphs, so nothing
+/* small inline-drawn icons - currentColor SVG, not text glyphs, so nothing
    depends on the embedded fonts (or the viewer's system fonts) having a
    given symbol */
 .icon { width: 14px; height: 14px; flex: none; vertical-align: -3px; }
@@ -1168,7 +1169,7 @@ input[type="search"]:focus {
     <div class="export-modal-box">
       <p class="level-heading">Edited graph JSON</p>
       <p class="restore-note">
-        A direct download may be blocked by this page's sandbox — the text
+        A direct download may be blocked by this page's sandbox - the text
         below always works: it's pre-selected, so Cmd/Ctrl+C copies it, or
         click Copy.
       </p>
@@ -1186,8 +1187,8 @@ input[type="search"]:focus {
       <div class="png-option-row">
         <span class="png-option-label">Link signs</span>
         <div class="loop-type-grid">
-          <button class="loop-type-toggle" type="button" data-png-polarity="1">Show +/−</button>
-          <button class="loop-type-toggle" type="button" data-png-polarity="0">Hide +/−</button>
+          <button class="loop-type-toggle" type="button" data-png-polarity="1">Show +/-</button>
+          <button class="loop-type-toggle" type="button" data-png-polarity="0">Hide +/-</button>
         </div>
       </div>
       <div class="png-option-row">
@@ -1201,7 +1202,7 @@ input[type="search"]:focus {
       <p class="restore-note">
         Links with no polarity set never show a sign. If the download doesn't
         start (this page's sandbox may block it), right-click or long-press
-        the preview and choose "Save Image As…".
+        the preview and choose "Save Image As...".
       </p>
       <div class="detail-actions">
         <button class="confirm-btn" id="png-export-download" disabled>Download</button>
@@ -1293,7 +1294,7 @@ const viewport = document.getElementById('viewport');
 const stage = document.getElementById('stage');
 
 // levels are a free-form, fully user-editable grouping/color axis (add,
-// rename, recolor, delete — all from the sidebar legend). `levels` is the
+// rename, recolor, delete - all from the sidebar legend). `levels` is the
 // live mutable array; `levelByNum` is rebuilt from it after every change so
 // lookups elsewhere stay O(1). Declared this early (rather than next to the
 // legend code that edits them) for the same TDZ reason as addNodeMode
@@ -1305,7 +1306,7 @@ function rebuildLevelByNum() { levelByNum = new Map(levels.map(l => [l.level, l]
 rebuildLevelByNum();
 let levelIdSeq = levels.reduce((m, l) => Math.max(m, l.level), 0);
 
-// grid containers the level-editing functions below populate — looked up
+// grid containers the level-editing functions below populate - looked up
 // this early for the same reason: buildGraph(DATA) (below) ends by calling
 // renderAllLevelGrids(), before execution would otherwise reach these.
 const levelGrid = document.getElementById('level-grid');
@@ -1316,60 +1317,60 @@ const detailLevelGrid = document.getElementById('detail-level-grid');
 const edgeLayer = document.createElementNS(svgNS, 'g');
 const nodeLayer = document.createElementNS(svgNS, 'g');
 const labelLayer = document.createElementNS(svgNS, 'g');
-const polarityLayer = document.createElementNS(svgNS, 'g'); // "+"/"−" badges, always on top so they stay legible over crossing edges
+const polarityLayer = document.createElementNS(svgNS, 'g'); // "+"/"-" badges, always on top so they stay legible over crossing edges
 viewport.appendChild(edgeLayer);
 viewport.appendChild(nodeLayer);
 viewport.appendChild(labelLayer);
 viewport.appendChild(polarityLayer);
 
-// live graph state — reassigned wholesale by buildGraph(), mutated in place
+// live graph state - reassigned wholesale by buildGraph(), mutated in place
 // by addEdge()/removeEdge()/removeNode()/mergeNodes() as the user edits the diagram
 let byId, nodeEls, labelEls, edgeEls, edgeVisuals, neighborIds, liveNodes, activeLevel;
 let selected = null;
 let suppressClick = false;
 let mergeMode = false, mergePicked = [], mergeLevel = 1;
 
-// add-a-new-variable mode — see addNode()/setAddNodeMode() further down.
+// add-a-new-variable mode - see addNode()/setAddNodeMode() further down.
 // Declared this early (rather than next to that code) because buildGraph()
 // references it below and runs for the first time before this file's
-// execution reaches that later block — a `let` referenced before its own
+// execution reaches that later block - a `let` referenced before its own
 // declaration line executes throws, even though the reference is inside a
 // function body, so the declaration has to sit ahead of buildGraph(DATA).
 let addNodeMode = false, addNodeLevel = 1;
 
-// free-arrange mode — see setFreeMode()/togglePin() near the drag-physics
+// free-arrange mode - see setFreeMode()/togglePin() near the drag-physics
 // code below for what "pinned" actually does to a node
 let freeMode = false;
 // node ids pinned automatically by the *current* free-arrange session (not
-// pinned some other way, e.g. a saved loop's own pin button) — tracked so
+// pinned some other way, e.g. a saved loop's own pin button) - tracked so
 // turning the mode back off can release exactly those, and only those
 let freeModeAutoPinned = new Set();
 
-// "show all loops" mode — see setShowAllLoops() further down. Declared this
+// "show all loops" mode - see setShowAllLoops() further down. Declared this
 // early for the same reason addNodeMode is (see the comment above it):
 // resetSpotlightVisuals(), which this reads, runs for the first time via
 // buildGraph(DATA) below, before this file's execution reaches the later
 // block that would otherwise declare it.
 let showAllLoops = false;
 
-// feedback-loop annotation state — loops: [{id, name, type: 'R'|'B', nodes, color}]
+// feedback-loop annotation state - loops: [{id, name, type: 'R'|'B', nodes, color}]
 let loops = [];
 let loopMode = false, loopPicked = [], loopType = 'R';
 let loopColorSeq = 0, loopIdSeq = 0;
-let highlightedLoopIds = new Set(); // multiple loops can be highlighted at once — see toggleLoopHighlight()
+let highlightedLoopIds = new Set(); // multiple loops can be highlighted at once - see toggleLoopHighlight()
 
-// undo stack — see pushUndoCheckpoint()/undo() further down for what
+// undo stack - see pushUndoCheckpoint()/undo() further down for what
 // actually gets tracked. Declared this early for the same TDZ reason
 // addNodeMode/showAllLoops are: the initial-load block below seeds it
 // before this file's execution would otherwise reach its later definition.
 let undoStack = [];
-// the full 8-hue standard categorical palette — see the --loop-N comment
+// the full 8-hue standard categorical palette - see the --loop-N comment
 // near :root for how 6/7/8 (blue/orange/green) avoid colliding with those
 // hues' other meanings elsewhere on this canvas
 const LOOP_COLORS = ['var(--loop-1)', 'var(--loop-2)', 'var(--loop-3)', 'var(--loop-4)', 'var(--loop-5)', 'var(--loop-6)', 'var(--loop-7)', 'var(--loop-8)'];
 
 // one entry per *user-intent* edit (delete/merge/rename/manual link add or
-// remove/restore) — not per low-level addEdge()/removeEdge() call, so a
+// remove/restore) - not per low-level addEdge()/removeEdge() call, so a
 // single delete that bridges five ties logs once, not five times
 let changeLog = [];
 
@@ -1397,24 +1398,24 @@ function renderChangeLog() {
 }
 renderChangeLog();
 
-// a small "remove" icon reused by every per-row remove button — inline SVG,
+// a small "remove" icon reused by every per-row remove button - inline SVG,
 // not a text glyph, so it doesn't depend on the embedded fonts (or the
 // viewer's system fonts) having an X/multiplication-sign character at all
 const X_ICON_SVG = '<svg class="icon-sm" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M1.5 1.5 L8.5 8.5 M8.5 1.5 L1.5 8.5"/></svg>';
 // same pin glyph as the free-arrange toggle above the canvas, reused at
 // per-loop-row scale
 const PIN_ICON_SVG = '<svg class="icon-sm" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="3.6" r="1.9"/><path d="M5 5.5 L5 9" /></svg>';
-// a small "picture" glyph for "export this loop as a PNG" — same inline-SVG
+// a small "picture" glyph for "export this loop as a PNG" - same inline-SVG
 // reasoning as the two icons above
 const PNG_ICON_SVG = '<svg class="icon-sm" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="0.8" y="0.8" width="8.4" height="8.4" rx="1.1"/><circle cx="3.4" cy="3.6" r="0.9"/><path d="M9 6.6 L6.4 4.2 L1.8 8.4"/></svg>';
-// polarity glyphs — drawn as SVG paths, not text, same reasoning as the
-// canvas polarity badge (createPolarityLabel): a "+"/"−"/"±" character
+// polarity glyphs - drawn as SVG paths, not text, same reasoning as the
+// canvas polarity badge (createPolarityLabel): a "+"/"-"/"+/-" character
 // isn't guaranteed to be in every font's fallback chain in every renderer
 const POLARITY_PLUS_SVG = '<svg class="icon-sm" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5 2 L5 8 M2 5 L8 5"/></svg>';
 const POLARITY_MINUS_SVG = '<svg class="icon-sm" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M2 5 L8 5"/></svg>';
 const POLARITY_UNSET_SVG = '<svg class="icon-sm" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><path d="M5 1.6 L5 4.4 M3.2 3 L6.8 3"/><path d="M3.2 7 L6.8 7"/></svg>';
 
-// degree-based dot size, same formula the server-side layout uses — kept
+// degree-based dot size, same formula the server-side layout uses - kept
 // here so a brand-new merged node gets a correctly-sized dot at creation
 function computeRadius(n) {
   return Math.min(9 + 2.8 * Math.sqrt(n.in.length + n.out.length), 24);
@@ -1436,7 +1437,7 @@ function labelTextWidth(s) {
   return labelMeasureCtx.measureText(s).width;
 }
 
-// greedy word wrap — a single word longer than the max width gets a line
+// greedy word wrap - a single word longer than the max width gets a line
 // to itself and simply widens the box
 function wrapLabel(text) {
   const lines = [];
@@ -1458,7 +1459,7 @@ function layoutNodeBox(n) {
   const t = labelEls.get(n.id);
   if (t) {
     t.replaceChildren();
-    const firstY = -((lines.length - 1) * NODE_LINE_H) / 2 + NODE_FONT_PX * 0.35; // 0.35em ≈ half the x-height, so the block centers vertically
+    const firstY = -((lines.length - 1) * NODE_LINE_H) / 2 + NODE_FONT_PX * 0.35; // 0.35em ~ half the x-height, so the block centers vertically
     lines.forEach((line, i) => {
       const span = document.createElementNS(svgNS, 'tspan');
       span.setAttribute('x', 0);
@@ -1475,7 +1476,7 @@ function layoutNodeBox(n) {
   positionNodeEls(n);
 }
 
-// moves one node's box + label to its current (n.x, n.y) — the label is
+// moves one node's box + label to its current (n.x, n.y) - the label is
 // positioned by transform so its tspans can stay relative to the center
 function positionNodeEls(n) {
   const el = nodeEls.get(n.id);
@@ -1505,7 +1506,7 @@ function paintNode(id, color) {
 }
 
 // the embedded font may not be decoded yet on first build, so the initial
-// measurements could be against a fallback face — re-wrap once it is
+// measurements could be against a fallback face - re-wrap once it is
 document.fonts.load(`700 ${NODE_FONT_PX}px 'Public Sans'`).then(() => {
   if (!liveNodes) return;
   liveNodes.forEach(layoutNodeBox);
@@ -1522,7 +1523,7 @@ function boxPad(n, ux, uy) {
 
 // dispatches a node click to whichever mode is active: picking nodes for a
 // merge, picking nodes for a feedback loop, or the normal single-select
-// spotlight — free-arrange mode doesn't hijack this: every node is already
+// spotlight - free-arrange mode doesn't hijack this: every node is already
 // pinned in bulk the moment that mode turns on (see setFreeMode()), so a
 // click there just selects/inspects the node like normal; dragging (a
 // separate pointerdown listener, unaffected by this dispatch) still moves it
@@ -1537,16 +1538,16 @@ function onNodeClick(id) {
 }
 
 // trims each end back by that node's own radius (plus a small gap) so the
-// line — and its arrowhead — clears the node's fill instead of disappearing
+// line - and its arrowhead - clears the node's fill instead of disappearing
 // under it, and returns the trimmed endpoints + control point rather than a
-// path string directly — edgeCurve() turns that into "d", pointAtT() turns
+// path string directly - edgeCurve() turns that into "d", pointAtT() turns
 // it into a point along the curve for positioning a polarity badge.
-// bendOverride, when not null/undefined, replaces the auto-computed bow —
+// bendOverride, when not null/undefined, replaces the auto-computed bow -
 // this is how a manually-dragged edge (see startEdgeDrag()) stays bent
 // where the user left it instead of snapping back to the default curve.
 // Without an override, a bidirectional pair gets bow=0 (an exact straight
 // line, control point on the midpoint) since a curve with arrowheads on
-// both ends reads worse than a plain double-headed line — but the user can
+// both ends reads worse than a plain double-headed line - but the user can
 // still drag one into a curve deliberately, same as any other edge.
 function edgeGeometry(a, b, bidir, bendOverride) {
   const dx = b.x - a.x, dy = b.y - a.y;
@@ -1578,7 +1579,7 @@ function edgeCurve(geo) {
 }
 
 // point at parameter t (0 = source end, 1 = target end) along that same
-// quadratic curve — used to plant a polarity badge near the arrowhead it
+// quadratic curve - used to plant a polarity badge near the arrowhead it
 // belongs to, without duplicating edgeGeometry's endpoint-trimming math
 function pointAtT(geo, t) {
   const omt = 1 - t;
@@ -1593,7 +1594,7 @@ function positionLabel(g, geo, t) {
   g.setAttribute('transform', `translate(${p.x},${p.y})`);
 }
 
-// cheap per-frame geometry update — just moves the existing visual paths
+// cheap per-frame geometry update - just moves the existing visual paths
 // and polarity badges, doesn't touch which ones exist. Safe to call on
 // every drag/sim tick.
 function redrawEdgeGeometry() {
@@ -1608,15 +1609,15 @@ function redrawEdgeGeometry() {
   });
 }
 
-// small "+"/"−" badge marking one causal link's polarity ("+" = cause and
-// effect move the same way, "−" = they move opposite ways — standard CLD
+// small "+"/"-" badge marking one causal link's polarity ("+" = cause and
+// effect move the same way, "-" = they move opposite ways - standard CLD
 // notation), or the neutral unset glyph when polarity is null. Always
 // present on every edge (not just ones already assigned a polarity) so
 // there's a button right on the canvas to set one; it stays low-opacity
 // until the edge or the badge itself is hovered, so 150-odd of these don't
 // clutter a dense diagram at rest (see .polarity-label CSS). Clicking it
-// cycles the same way the sidebar's ± button does. The sign is drawn as a
-// path, not an SVG <text> glyph — Unicode's minus sign (U+2212) isn't
+// cycles the same way the sidebar's +/- button does. The sign is drawn as a
+// path, not an SVG <text> glyph - Unicode's minus sign (U+2212) isn't
 // reliably in the embedded font's per-character fallback chain for SVG
 // text specifically in every renderer (WebKit/Safari can render nothing
 // there instead of falling back to a system font, even where the same
@@ -1637,13 +1638,13 @@ function createPolarityLabel(polarity, s, t) {
   g.addEventListener('click', (ev) => {
     ev.stopPropagation();
     cyclePolarity(s, t);
-    if (selected === s || selected === t) selectNode(selected); // keep the detail panel's own ± button in sync
+    if (selected === s || selected === t) selectNode(selected); // keep the detail panel's own +/- button in sync
   });
   return g;
 }
 
 // (re)builds the on-screen edge paths (and any polarity badges) from the
-// current edgeEls — call whenever the edge *set* or a polarity changes
+// current edgeEls - call whenever the edge *set* or a polarity changes
 // (add/remove/merge/restore/import/polarity edit), not on every animation
 // frame. A reciprocal pair (A->B and B->A both saved) collapses into a
 // single double-headed path instead of two separate arcs.
@@ -1664,14 +1665,14 @@ function rebuildEdgeVisuals() {
     if (bidir) path.setAttribute('marker-start', 'url(#arrow)');
     edgeLayer.appendChild(path);
 
-    // wide, invisible sibling path purely for pointer interaction — the
+    // wide, invisible sibling path purely for pointer interaction - the
     // visible line is only 1-2px, too thin to reliably grab or hover
     const hit = document.createElementNS(svgNS, 'path');
     hit.setAttribute('class', 'edge-hit');
     edgeLayer.appendChild(hit);
 
     // always create both badges (not just when a polarity is already set)
-    // so there's a button on every edge to assign one — see createPolarityLabel
+    // so there's a button on every edge to assign one - see createPolarityLabel
     const fwdLabelEl = createPolarityLabel(e.polarity, e.s, e.t);
     polarityLayer.appendChild(fwdLabelEl);
     let revLabelEl = null;
@@ -1699,7 +1700,7 @@ function setEdgeBadgesHovered(entry, on) {
 }
 
 // add a single causal tie, deduped, wiring up spring adjacency + the
-// endpoints' in/out lists (used by the detail panel and the spotlight) —
+// endpoints' in/out lists (used by the detail panel and the spotlight) -
 // purely data; call rebuildEdgeVisuals() afterward to reflect it on screen
 function addEdge(s, t) {
   if (s === t) return null;
@@ -1716,8 +1717,8 @@ function addEdge(s, t) {
   return entry;
 }
 
-// cycles a link's polarity: unset -> + -> − -> unset. Shared by the
-// sidebar's ± button and clicking a badge directly on the canvas.
+// cycles a link's polarity: unset -> + -> - -> unset. Shared by the
+// sidebar's +/- button and clicking a badge directly on the canvas.
 function cyclePolarity(s, t) {
   const entry = edgeEls.find(e => e.s === s && e.t === t);
   if (!entry) return null;
@@ -1731,7 +1732,7 @@ function cyclePolarity(s, t) {
   return entry.polarity;
 }
 
-// purely data, same reasoning as addEdge — call rebuildEdgeVisuals() after
+// purely data, same reasoning as addEdge - call rebuildEdgeVisuals() after
 function removeEdge(entry) {
   const idx = edgeEls.indexOf(entry);
   if (idx >= 0) edgeEls.splice(idx, 1);
@@ -1749,7 +1750,7 @@ function updateStats() {
 }
 
 // creates one node's box + label + listeners and registers it in the
-// live maps — used by buildGraph's initial pass and by mergeNodes() when it
+// live maps - used by buildGraph's initial pass and by mergeNodes() when it
 // creates the merged replacement node
 function createNodeEl(n) {
   const c = document.createElementNS(svgNS, 'rect');
@@ -1768,7 +1769,7 @@ function createNodeEl(n) {
 
   const t = document.createElementNS(svgNS, 'text');
   t.setAttribute('class', 'node-label');
-  // an attribute, not CSS — the PNG export clones this into a detached
+  // an attribute, not CSS - the PNG export clones this into a detached
   // SVG without the page's stylesheet, so a CSS-only centering is lost there
   t.setAttribute('text-anchor', 'middle');
   t.dataset.id = n.id;
@@ -1780,7 +1781,7 @@ function createNodeEl(n) {
   layoutNodeBox(n);
 }
 
-// (re)builds the whole diagram from a data object shaped like DATA — used
+// (re)builds the whole diagram from a data object shaped like DATA - used
 // once at load and again by "restore full diagram" after a fresh clone
 function buildGraph(sourceData) {
   edgeLayer.replaceChildren();
@@ -1788,7 +1789,7 @@ function buildGraph(sourceData) {
   labelLayer.replaceChildren();
   polarityLayer.replaceChildren();
 
-  // levels have to be live before createNodeEl() runs below — it looks up
+  // levels have to be live before createNodeEl() runs below - it looks up
   // each node's fill color via levelByNum, and a restored/imported node can
   // carry a level number the *previous* levelByNum never had (e.g. undoing
   // a level deletion brings back both a node and the level it was on)
@@ -1828,13 +1829,13 @@ function buildGraph(sourceData) {
   renderAllLevelGrids();
 
   // node/edge identity isn't preserved across a rebuild, so any saved loops
-  // would be pointing at objects that no longer exist — callers that need
+  // would be pointing at objects that no longer exist - callers that need
   // to keep loops (the initial page load) restore them separately afterward
   // via restoreLoopsAndLogFrom()
   loops = [];
   highlightedLoopIds = new Set();
   if (loopMode) setLoopMode(false);
-  if (freeMode) setFreeMode(true); // stays on across a rebuild — re-sweep so the fresh node objects are pinned too
+  if (freeMode) setFreeMode(true); // stays on across a rebuild - re-sweep so the fresh node objects are pinned too
   if (addNodeMode) setAddNodeMode(false);
   if (showAllLoops) setShowAllLoops(false);
   renderLoopList();
@@ -1844,10 +1845,10 @@ function buildGraph(sourceData) {
 }
 
 // restores loops/log from a DATA-shaped object's own .loops/.log/
-// .loopsDropped — present when the page was rendered from an exported
+// .loopsDropped - present when the page was rendered from an exported
 // graph JSON (see build_payload_from_json() in render.py); absent for an
 // xmile-sourced page, where this is a no-op. Called once at initial page
-// load, right after buildGraph(DATA) — buildGraph() itself always resets
+// load, right after buildGraph(DATA) - buildGraph() itself always resets
 // loops to empty and has no idea a source object might carry its own.
 function restoreLoopsAndLogFrom(source) {
   if (!Array.isArray(source.loops) && !Array.isArray(source.log)) return;
@@ -1865,14 +1866,14 @@ function restoreLoopsAndLogFrom(source) {
 
   (source.log || []).forEach(text => logChange('history', text));
   if (source.loopsDropped) {
-    logChange('history', `${source.loopsDropped} feedback loop(s) from the source file were dropped — no longer a valid cycle.`);
+    logChange('history', `${source.loopsDropped} feedback loop(s) from the source file were dropped - no longer a valid cycle.`);
   }
 }
 
 buildGraph(DATA);
 restoreLoopsAndLogFrom(DATA);
 
-// baseline for the undo stack — the state as first loaded (whatever that
+// baseline for the undo stack - the state as first loaded (whatever that
 // is: a bare xmile parse, or a JSON export with its own loops/log already
 // restored above), with no "action" of its own to describe
 undoStack.push({ snapshot: captureSnapshot(), text: null });
@@ -1900,7 +1901,7 @@ function removeNode(id) {
 
   rebuildEdgeVisuals();
   updateStats();
-  const deleteMsg = `Deleted "${id}" — ${parents.length} cause(s) now connect directly to ${children.length} effect(s)`;
+  const deleteMsg = `Deleted "${id}" - ${parents.length} cause(s) now connect directly to ${children.length} effect(s)`;
   logChange('delete', deleteMsg);
   pruneInvalidLoops();
   pushUndoCheckpoint(deleteMsg);
@@ -1908,7 +1909,7 @@ function removeNode(id) {
   if (selected === id) {
     clearSelection();
   } else if (selected && byId.has(selected)) {
-    selectNode(selected); // refresh in/out lists — bridging may have changed them
+    selectNode(selected); // refresh in/out lists - bridging may have changed them
   }
 }
 
@@ -1916,16 +1917,16 @@ document.getElementById('delete-btn').addEventListener('click', () => {
   if (selected) removeNode(selected);
 });
 
-// wipes down to a blank canvas — for starting a completely new diagram
+// wipes down to a blank canvas - for starting a completely new diagram
 // rather than editing the loaded one. This pushes its own undo checkpoint
-// like every other edit, so the confirm just guards against a stray click —
+// like every other edit, so the confirm just guards against a stray click -
 // one Undo brings everything straight back if it was a mistake.
 document.getElementById('clear-all-btn').addEventListener('click', () => {
   if (liveNodes.length === 0) return; // already empty, nothing to confirm
   if (!confirm('Delete all nodes and links? This clears the entire diagram so you can build a new one from scratch.\n\n(Click Undo afterward if you change your mind.)')) return;
-  buildGraph({ nodes: [], edges: [], levels }); // keep the current level scheme — only content is being cleared
+  buildGraph({ nodes: [], edges: [], levels }); // keep the current level scheme - only content is being cleared
   changeLog = [];
-  logChange('clear-all', 'Cleared the entire diagram — starting fresh');
+  logChange('clear-all', 'Cleared the entire diagram - starting fresh');
   pushUndoCheckpoint('Cleared the entire diagram');
 });
 
@@ -1984,7 +1985,7 @@ function mergeNodes(ids, newName, level) {
   updateStats();
   let mergeMsg;
   if (mergeIds.length === 1) {
-    // a pure rename doesn't change the graph's structure, just an id — so
+    // a pure rename doesn't change the graph's structure, just an id - so
     // update any saved loop's reference instead of letting pruneInvalidLoops
     // treat it as a dangling node and drop the loop
     const oldId = mergeIds[0];
@@ -2003,7 +2004,7 @@ function mergeNodes(ids, newName, level) {
 
 // ---- add a brand-new, unconnected variable ----
 // the only way to get a node onto the map that wasn't in the original
-// diagram — placed at the current view's center so it's immediately
+// diagram - placed at the current view's center so it's immediately
 // visible, then selected so its causes/effects can be wired up right away
 // via the detail panel's existing "+ Add a cause/effect" inputs.
 function addNode(name, level) {
@@ -2038,7 +2039,7 @@ function showAddNodeStatus(text, isError) {
 
 function setAddNodeMode(on) {
   if (on) {
-    if (mergeMode) setMergeMode(false); // every picking/creating mode is mutually exclusive (free-arrange isn't one — it stays as-is)
+    if (mergeMode) setMergeMode(false); // every picking/creating mode is mutually exclusive (free-arrange isn't one - it stays as-is)
     if (loopMode) setLoopMode(false);
   }
   addNodeMode = on;
@@ -2190,7 +2191,7 @@ function toggleLoopPick(id) {
 }
 
 // picked nodes are listed in click order (order matters for a loop, unlike
-// a merge) — misclicks are fixed by removing just that row, no need to
+// a merge) - misclicks are fixed by removing just that row, no need to
 // start over
 function renderLoopPanel() {
   document.getElementById('loop-count').textContent = loopPicked.length;
@@ -2237,8 +2238,8 @@ function showLoopStatus(text, isError) {
   el.style.display = text ? '' : 'none';
 }
 
-// a cycle only counts if every consecutive pair — including the wrap-around
-// from the last picked node back to the first — is a real causal link
+// a cycle only counts if every consecutive pair - including the wrap-around
+// from the last picked node back to the first - is a real causal link
 // already in the diagram, in that direction. edgeList defaults to the live
 // graph's edges, but importGraph() also runs this against a freshly-parsed
 // uploaded file's edges before those are ever wired into the live graph.
@@ -2256,7 +2257,7 @@ function saveLoop(nodeIds, name, type) {
   if (!name) return null;
   const check = validateLoopCycle(nodeIds);
   if (!check.ok) {
-    showLoopStatus(`No direct link from "${check.from}" to "${check.to}" — pick a different order or add that link first.`, true);
+    showLoopStatus(`No direct link from "${check.from}" to "${check.to}" - pick a different order or add that link first.`, true);
     return null;
   }
   const loop = {
@@ -2297,7 +2298,7 @@ function pruneInvalidLoops() {
     if (check.ok) {
       survivors.push(loop);
     } else {
-      logChange('loop-remove', `Feedback loop "${loop.name}" removed — a link it depended on no longer exists`);
+      logChange('loop-remove', `Feedback loop "${loop.name}" removed - a link it depended on no longer exists`);
       if (highlightedLoopIds.delete(loop.id)) highlightChanged = true;
     }
   });
@@ -2310,14 +2311,14 @@ function pruneInvalidLoops() {
 // how many different kinds of edits this app supports (delete/merge/
 // rename/add node, add/remove a link, polarity, loop save/delete, level
 // change, clear-all, restore, import), snapshot-and-restore is far simpler
-// and more robust than writing a bespoke inverse for each — the same "just
+// and more robust than writing a bespoke inverse for each - the same "just
 // recompute everything" philosophy the rest of this file already leans on.
 // Dragging a node or edge, bending an edge, and pinning are deliberately
-// NOT snapshotted — those are layout, not content, matching how they were
+// NOT snapshotted - those are layout, not content, matching how they were
 // never written to the change log either. Repeatable: each click steps
 // back one more edit, not just a single undo level. A cascading cleanup
-// like pruneInvalidLoops() never pushes its own checkpoint — only the
-// outer action that triggered it does, once, after the cascade settles —
+// like pruneInvalidLoops() never pushes its own checkpoint - only the
+// outer action that triggered it does, once, after the cascade settles -
 // so one user action is always exactly one undo step, however many loops
 // it happens to break along the way. ----
 function captureSnapshot() {
@@ -2335,7 +2336,7 @@ function pushUndoCheckpoint(text) {
 }
 
 function restoreSnapshot(snap) {
-  // buildGraph() never derives in/out/r itself — every other caller (the
+  // buildGraph() never derives in/out/r itself - every other caller (the
   // initial page-load payload, importGraph()) hands them over already
   // computed, so do the same here rather than leaving them to fill in via
   // a transient invalid state (addEdge()'s own in/out pushes no-op once
@@ -2360,7 +2361,7 @@ function restoreSnapshot(snap) {
   snap.nodes.forEach(n => { if (n.pinned) setPinned(n.id, true); });
   // each loop's own color travels with the snapshot (captureSnapshot saves
   // it) rather than being reassigned from the running loopColorSeq counter
-  // here — a loop's color should stay exactly what it was before the
+  // here - a loop's color should stay exactly what it was before the
   // action being undone, not just "some distinct color"
   loops = snap.loops.map(l => ({
     id: 'loop-' + (++loopIdSeq),
@@ -2397,7 +2398,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 function renderLoopList() {
-  if (showAllLoops) applyAllLoopsTint(); // loops just changed (add/delete/prune) — keep the overlay in sync
+  if (showAllLoops) applyAllLoopsTint(); // loops just changed (add/delete/prune) - keep the overlay in sync
   const list = document.getElementById('loop-list');
   list.innerHTML = '';
   if (loops.length === 0) {
@@ -2451,7 +2452,7 @@ function renderLoopList() {
     png.addEventListener('click', (ev) => {
       ev.stopPropagation();
       // when this loop is part of a multi-loop highlight, export all of
-      // them together rather than just this row's own loop — same button,
+      // them together rather than just this row's own loop - same button,
       // context-aware, so no separate "export highlighted loops" control
       // is needed
       const exportLoops = (highlightedLoopIds.size > 1 && highlightedLoopIds.has(loop.id))
@@ -2504,7 +2505,7 @@ document.getElementById('loop-confirm').addEventListener('click', () => {
 });
 
 // ---- levels: legend, filter, and full CRUD editing ----
-// Levels are a free-form grouping/color axis, not a fixed taxonomy — add,
+// Levels are a free-form grouping/color axis, not a fixed taxonomy - add,
 // rename, recolor, or delete them from the sidebar legend at any time.
 // `renderAllLevelGrids()` is the one place that repaints every picker that
 // lists levels (the legend itself, plus the add-node/merge/detail single-
@@ -2512,7 +2513,7 @@ document.getElementById('loop-confirm').addEventListener('click', () => {
 
 // validates an untrusted "levels" array (an uploaded file, or a re-render
 // of DATA.levels) into the {level,key,label,color} shape used everywhere
-// else — mirrors _sanitize_levels() in render.py so a JSON export renders
+// else - mirrors _sanitize_levels() in render.py so a JSON export renders
 // identically whether it's loaded via the CLI or re-uploaded in the browser
 function sanitizeLevels(rawLevels) {
   if (!Array.isArray(rawLevels)) return null;
@@ -2598,7 +2599,7 @@ function renderDetailLevelGrid() {
 }
 
 // repaints every node currently on level `l`, plus that level's swatch in
-// every other picker — called on every color-input tick (a live drag), so
+// every other picker - called on every color-input tick (a live drag), so
 // it deliberately does NOT touch the legend's own <input type=color> (that
 // would blur/reset the native picker mid-drag) or re-render any grid
 function applyLevelColorChange(l) {
@@ -2644,7 +2645,7 @@ function addLevel() {
 }
 
 function deleteLevel(levelNum) {
-  if (levels.length <= 1) { alert("Can't delete the last remaining level — every variable needs one."); return; }
+  if (levels.length <= 1) { alert("Can't delete the last remaining level - every variable needs one."); return; }
   const l = levelByNum.get(levelNum);
   if (!l) return;
   const fallback = levels.find(x => x.level !== levelNum);
@@ -2669,7 +2670,7 @@ function deleteLevel(levelNum) {
   refreshLevelVisibility();
 
   let msg = `Deleted level "${l.label}"`;
-  if (moved) msg += ` — ${moved} variable(s) moved to "${fallback.label}"`;
+  if (moved) msg += ` - ${moved} variable(s) moved to "${fallback.label}"`;
   logChange('level-edit', msg);
   pushUndoCheckpoint(msg);
   renderAllLevelGrids();
@@ -2809,7 +2810,7 @@ fitToStage();
 // ---- drag nodes, with a light force simulation so neighbors follow and
 // strangers get pushed out of the way (repulsion + edge springs), the way
 // force-directed graph tools (D3-force and friends) normally behave. No
-// anchor pulling nodes back to their original spot — deceleration alone
+// anchor pulling nodes back to their original spot - deceleration alone
 // settles it, so you can drag a whole cluster out and it stays put. ----
 const REPEL_DIST = 210;   // nodes closer than this actively push apart
 const REPEL_K = 2600;
@@ -2822,7 +2823,7 @@ const MAX_SETTLE_FRAMES = 400; // safety cap so it can't idle forever
 
 let dragNode = null;
 let dragEdge = null;
-const MAX_BEND = 220; // px — keeps a dragged edge from bowing into an absurd loop
+const MAX_BEND = 220; // px - keeps a dragged edge from bowing into an absurd loop
 let simRunning = false;
 let settleFrames = 0;
 
@@ -2843,7 +2844,7 @@ function simTick() {
   const draggedId = dragNode ? dragNode.id : null;
   liveNodes.forEach(a => {
     if (a.id === draggedId) return; // pinned to the pointer directly, not physics
-    // free-arrange mode suspends the simulation entirely — only the node
+    // free-arrange mode suspends the simulation entirely - only the node
     // you're actually holding moves, nothing else follows or gets pushed
     // aside. An individually pinned node stays fixed the same way even
     // outside free-arrange mode.
@@ -2936,7 +2937,7 @@ window.addEventListener('pointerup', (ev) => {
   nodeEls.get(dragNode.id).classList.remove('dragging');
   suppressClick = dragNode.moved;
   // entering free-arrange mode already pins every existing node (see
-  // setFreeMode()) — this only matters for a node created *during* free
+  // setFreeMode()) - this only matters for a node created *during* free
   // mode (add/merge), which missed that sweep: dragging it pins it too, and
   // into the same auto-pinned set, so it's released the same way as every
   // other node once free mode is turned back off
@@ -2948,15 +2949,15 @@ window.addEventListener('pointerup', (ev) => {
   settleFrames = 0;
 });
 
-// ---- drag an edge to bend it — grabbing anywhere along its (wide,
+// ---- drag an edge to bend it - grabbing anywhere along its (wide,
 // invisible .edge-hit) length and moving the pointer bows the curve toward
 // it, same "grab it, it stays exactly where you leave it" feel as dragging
 // a node, but with no physics involved: nothing else reacts. The bend is a
 // single signed perpendicular offset from the straight line between the
 // two nodes (same convention edgeGeometry()'s auto-bow already uses), so
 // it stays sensible even if a node is moved afterward. Stored on the
-// logical edge(s) — both directions of a bidirectional pair, kept in sync
-// — so it survives a rebuild (merge/restore/import) the same way polarity
+// logical edge(s) - both directions of a bidirectional pair, kept in sync
+// - so it survives a rebuild (merge/restore/import) the same way polarity
 // does, not just on the transient visual entry. ----
 function startEdgeDrag(ev, entry) {
   ev.stopPropagation();
@@ -3023,11 +3024,11 @@ function setPinned(id, pinned) {
   n.pinned = pinned;
   const el = nodeEls.get(id);
   if (el) el.classList.toggle('pinned', pinned);
-  if (!pinned) startSim(); // released back into the live layout — let it settle again
+  if (!pinned) startSim(); // released back into the live layout - let it settle again
   renderLoopList(); // a loop row's pin button reflects whether all its nodes are pinned
 }
 
-// independent of the merge/loop/add-node modes — those only change what a
+// independent of the merge/loop/add-node modes - those only change what a
 // click does, so picking nodes for a merge never unfreezes the diagram
 function setFreeMode(on) {
   freeMode = on;
@@ -3035,8 +3036,8 @@ function setFreeMode(on) {
   stage.classList.toggle('free-arrange', on);
   if (on) {
     clearSelection();
-    // freezes the whole diagram at once — every node not already pinned for
-    // some other reason (e.g. a saved loop's own pin button) — so nothing
+    // freezes the whole diagram at once - every node not already pinned for
+    // some other reason (e.g. a saved loop's own pin button) - so nothing
     // drifts while you rearrange things. Only the nodes pinned *by this
     // sweep* get tracked here, so turning the toggle back off releases
     // exactly those and leaves an independently-pinned node alone.
@@ -3051,11 +3052,11 @@ function setFreeMode(on) {
     renderLoopList(); // a loop row's pin button reflects whether all its nodes are pinned
   } else {
     // turning the toggle back off is what actually resumes the layout
-    // springs for everything this session froze — not just a label flip
+    // springs for everything this session froze - not just a label flip
     let releasedAny = false;
     freeModeAutoPinned.forEach(id => {
       const n = byId.get(id);
-      if (!n || !n.pinned) return; // gone, or already released by hand (e.g. a loop's pin button) — leave as-is
+      if (!n || !n.pinned) return; // gone, or already released by hand (e.g. a loop's pin button) - leave as-is
       n.pinned = false;
       const el = nodeEls.get(id);
       if (el) el.classList.remove('pinned');
@@ -3068,7 +3069,7 @@ function setFreeMode(on) {
 
 document.getElementById('free-toggle').addEventListener('click', () => setFreeMode(!freeMode));
 // physics off by default: the page opens with every node frozen where the
-// layout put it — toggle free-arrange off to let the springs run
+// layout put it - toggle free-arrange off to let the springs run
 setFreeMode(true);
 
 // ---- selection / spotlight ----
@@ -3121,7 +3122,7 @@ function resetSpotlightVisuals() {
     el.style.stroke = '';
     el.style.strokeWidth = '';
   });
-  // "show all loops" is a persistent view mode, not a transient spotlight —
+  // "show all loops" is a persistent view mode, not a transient spotlight -
   // a plain deselect click (clearSelection/clearLoopHighlight, both of
   // which reset through here) shouldn't dismiss it, so reassert it
   if (showAllLoops) applyAllLoopsTint();
@@ -3152,7 +3153,7 @@ function selectNode(id) {
 }
 
 // clicking a loop in the right-hand list toggles it into/out of the set of
-// currently-highlighted loops (checkbox-like — any number can be on at
+// currently-highlighted loops (checkbox-like - any number can be on at
 // once), spotlighting the union of their nodes and each loop's own
 // consecutive-pair links, each tinted in its own color (an edge shared by
 // 2+ highlighted loops gets the same dashed multi-color stripe treatment
@@ -3172,7 +3173,7 @@ function toggleLoopHighlight(id) {
 }
 
 // extracts the N from a 'var(--loop-N)' string, to pick the matching
-// per-color lit arrowhead marker (#arrow-lit-N) — same regex idea as
+// per-color lit arrowhead marker (#arrow-lit-N) - same regex idea as
 // resolveLoopColor() below, just for a marker id instead of a resolved color
 function loopColorIndex(varStr) {
   const m = /--loop-(\d+)/.exec(varStr);
@@ -3206,7 +3207,7 @@ function applySelectedLoopsTint() {
       entry.el.setAttribute('marker-end', marker);
       if (entry.bidir) entry.el.setAttribute('marker-start', marker);
     } else {
-      // 0 owners (dimmed) or 2+ owners (base stays neutral, stripes carry the color) — either way, no single tint color applies to the base path
+      // 0 owners (dimmed) or 2+ owners (base stays neutral, stripes carry the color) - either way, no single tint color applies to the base path
       entry.el.style.stroke = '';
       entry.el.style.strokeWidth = '';
       entry.el.setAttribute('marker-end', 'url(#arrow)');
@@ -3222,18 +3223,18 @@ function clearLoopHighlight() {
 }
 
 // ---- "show all loops": tints every edge that belongs to a saved loop with
-// that loop's color, all at once — unlike toggleLoopHighlight(), which only
+// that loop's color, all at once - unlike toggleLoopHighlight(), which only
 // ever dims/spotlights the loops explicitly picked in the sidebar. An edge
 // shared by 2+ saved loops cycles through all of their colors as a dashed
 // stripe (see STRIPE_DASH below) rather than picking one or hiding the
-// overlap — which loops share a link is exactly the kind of thing this view
+// overlap - which loops share a link is exactly the kind of thing this view
 // exists to surface. Mutually exclusive with node selection and loop
-// highlighting (both turn this off — see selectNode()/toggleLoopHighlight()
+// highlighting (both turn this off - see selectNode()/toggleLoopHighlight()
 // above); merge/loop-pick/free-arrange/add-node modes are untouched by it,
 // since none of them share this visual channel. ----
 
 // true if this edge's endpoints are a consecutive pair in loop's cycle,
-// checked both orderings for a collapsed bidirectional edge — same
+// checked both orderings for a collapsed bidirectional edge - same
 // reasoning as applySelectedLoopsTint()'s per-edge color lookup
 function edgeInLoop(loop, entry) {
   for (let i = 0; i < loop.nodes.length; i++) {
@@ -3244,7 +3245,7 @@ function edgeInLoop(loop, entry) {
 }
 
 // every loop in loopSubset (default: every saved loop) this edge belongs
-// to, in that subset's order (possibly empty, possibly more than one — a
+// to, in that subset's order (possibly empty, possibly more than one - a
 // shared link is common in a real CLD). Callers pass a narrower subset to
 // restrict to just the loops currently highlighted/being exported.
 function loopColorsForEdge(entry, loopSubset = loops) {
@@ -3265,7 +3266,7 @@ function stripeDashOffset(i) {
 }
 
 // paints (or clears) entry's dashed multi-color stripe overlay for a
-// 2+-owner edge — shared by applyAllLoopsTint() and applySelectedLoopsTint()
+// 2+-owner edge - shared by applyAllLoopsTint() and applySelectedLoopsTint()
 // so the two overlays can't drift apart. Always clears any prior stripes
 // first; rebuilds them only when colors has 2+ entries (a 0- or 1-color
 // edge is tinted via its own single stroke instead, by the caller).
@@ -3274,8 +3275,8 @@ function paintEdgeStripes(entry, colors) {
   if (colors.length < 2) return;
   // 2+ owners: leave the base path exactly as its plain default (stroke
   // untouched by the caller) so its arrowhead marker keeps painting
-  // normally — SVG markers aren't guaranteed to render on an unstroked
-  // path — and layer n dashed, offset stripes on top of the same geometry,
+  // normally - SVG markers aren't guaranteed to render on an unstroked
+  // path - and layer n dashed, offset stripes on top of the same geometry,
   // no markers on them, so together they cover the line in a repeating
   // color cycle.
   const d = entry.el.getAttribute('d');
@@ -3326,7 +3327,7 @@ function clearAll() {
 }
 
 // direction: 'in' means items are causes of otherId (item -> otherId);
-// 'out' means items are effects of otherId (otherId -> item) — needed so the
+// 'out' means items are effects of otherId (otherId -> item) - needed so the
 // per-row remove button knows which (source, target) pair to sever
 function fillList(elId, items, otherId, direction) {
   const ul = document.getElementById(elId);
@@ -3353,8 +3354,8 @@ function fillList(elId, items, otherId, direction) {
       pol.dataset.polarity = p || '';
       pol.innerHTML = p === '+' ? POLARITY_PLUS_SVG : p === '-' ? POLARITY_MINUS_SVG : POLARITY_UNSET_SVG;
       pol.title = p
-        ? `Polarity: ${p === '+' ? 'same direction (+)' : 'opposite direction (−)'} — click to change`
-        : 'Polarity not set — click to mark same (+) or opposite (−) direction';
+        ? `Polarity: ${p === '+' ? 'same direction (+)' : 'opposite direction (-)'} - click to change`
+        : 'Polarity not set - click to mark same (+) or opposite (-) direction';
     };
     paintPol();
     pol.addEventListener('click', (ev) => {
@@ -3395,7 +3396,7 @@ function fillList(elId, items, otherId, direction) {
 }
 
 // re-derives a node's degree-based size after a manual add/remove-edge
-// edit — kept on the data, though the drawn box is now sized by its label
+// edit - kept on the data, though the drawn box is now sized by its label
 function refreshNodeVisual(id) {
   const n = byId.get(id);
   if (!n) return;
@@ -3445,7 +3446,7 @@ wireEdgeAdder('add-out-input', 'add-out-results', 'out');
 stage.addEventListener('click', () => clearAll());
 document.getElementById('clear-btn').addEventListener('click', clearSelection);
 
-// ---- rename (implemented as mergeNodes([id], newName, level) — a merge of one) ----
+// ---- rename (implemented as mergeNodes([id], newName, level) - a merge of one) ----
 const nameDisplay = document.getElementById('detail-name');
 const nameEditInput = document.getElementById('detail-name-input');
 
@@ -3494,13 +3495,13 @@ document.getElementById('export-btn').addEventListener('click', () => {
       if (e.bend != null) o.bend = Math.round(e.bend * 10) / 10;
       return o;
     }),
-    loops: loops.map(l => ({ name: l.name, type: l.type, nodes: l.nodes })), // no color — reassigned fresh on import
+    loops: loops.map(l => ({ name: l.name, type: l.type, nodes: l.nodes })), // no color - reassigned fresh on import
     levels: levels.map(l => ({ level: l.level, key: l.key, label: l.label, color: l.color })),
     log: changeLog.slice().reverse().map(e => e.text), // oldest first
   };
   const text = JSON.stringify(payload, null, 2);
 
-  // best-effort real download — artifact pages are sandboxed and this can
+  // best-effort real download - artifact pages are sandboxed and this can
   // be silently blocked, so it's a bonus, never the only path to the data
   try {
     const blob = new Blob([text], { type: 'application/json' });
@@ -3513,7 +3514,7 @@ document.getElementById('export-btn').addEventListener('click', () => {
     a.remove();
     URL.revokeObjectURL(url);
   } catch (err) {
-    // ignore — the modal below is the guaranteed fallback
+    // ignore - the modal below is the guaranteed fallback
   }
 
   // guaranteed fallback: the JSON, pre-selected, in a copyable text box
@@ -3532,11 +3533,11 @@ exportCopyBtn.addEventListener('click', () => {
       exportCopyBtn.textContent = 'Copied!';
       setTimeout(reset, 1500);
     }).catch(() => {
-      exportCopyBtn.textContent = 'Selected — press Cmd/Ctrl+C';
+      exportCopyBtn.textContent = 'Selected - press Cmd/Ctrl+C';
       setTimeout(reset, 2500);
     });
   } else {
-    exportCopyBtn.textContent = 'Selected — press Cmd/Ctrl+C';
+    exportCopyBtn.textContent = 'Selected - press Cmd/Ctrl+C';
     setTimeout(reset, 2500);
   }
 });
@@ -3562,17 +3563,17 @@ window.addEventListener('keydown', (e) => {
 // document.styleSheets at runtime, not re-embedded from Python a second
 // time) so exported text keeps its real font instead of falling back.
 // Both the whole-diagram and single-loop export paths call this one
-// function — nodeIds/edgeFilter narrow what's included; tintColor (single
+// function - nodeIds/edgeFilter narrow what's included; tintColor (single
 // loop) or tintOverrides (the "show all loops" overlay) color the edges.
 function buildExportSvg({ nodeIds, edgeFilter, tintColor, tintOverrides }) {
   // cloneWithBakedStyle() below bakes each node/label's *current* computed
-  // opacity — if some other loop (or a selected node) is currently
+  // opacity - if some other loop (or a selected node) is currently
   // spotlighted on the live page, a node this export includes but that
   // spotlight doesn't may be sitting at the live page's dimmed opacity
   // (e.g. 0.16) right now, which would otherwise get baked into this
   // export even though it has nothing to do with what's being exported
   // here. Clear whatever's live, build the export, then restore it exactly
-  // — all synchronously, so nothing repaints in between and the user never
+  // - all synchronously, so nothing repaints in between and the user never
   // sees a flash.
   const hadLoopHighlight = highlightedLoopIds.size > 0;
   const hadAllLoopsTint = showAllLoops;
@@ -3640,7 +3641,7 @@ function buildExportSvgInner({ nodeIds, edgeFilter, tintColor, tintOverrides }) 
     const clone = entry.el.cloneNode(false);
     // the live edge may currently carry an inline style (from spotlight/
     // tint highlighting, e.g. style="stroke: var(--loop-3)") that cloneNode
-    // copies verbatim — an inline style always wins over the presentation
+    // copies verbatim - an inline style always wins over the presentation
     // attributes set below, and that copied var() reference resolves to
     // nothing once detached from this page, silently blanking the stroke.
     // Drop it so the attributes below are what actually renders.
@@ -3657,7 +3658,7 @@ function buildExportSvgInner({ nodeIds, edgeFilter, tintColor, tintOverrides }) 
       clone.setAttribute('marker-end', 'url(#exp-arrow)');
       if (entry.bidir) clone.setAttribute('marker-start', 'url(#exp-arrow)');
     } else {
-      // plain/neutral — either untinted, or (below) the base an edge shared
+      // plain/neutral - either untinted, or (below) the base an edge shared
       // by 2+ loops sits under its own dashed color stripes
       clone.setAttribute('stroke', plainArrowColor);
       clone.setAttribute('stroke-width', '1');
@@ -3681,9 +3682,9 @@ function buildExportSvgInner({ nodeIds, edgeFilter, tintColor, tintOverrides }) 
         edgeLayerOut.appendChild(stripe);
       });
     }
-    // only assigned polarities make it into an export — the neutral "unset"
-    // badge is an on-canvas editing affordance, not part of the diagram —
-    // and none at all when the toolbar's ± toggle is off
+    // only assigned polarities make it into an export - the neutral "unset"
+    // badge is an on-canvas editing affordance, not part of the diagram -
+    // and none at all when the toolbar's +/- toggle is off
     if (exportShowPolarity) {
       [entry.fwdLabelEl, entry.revLabelEl].forEach(labelEl => {
         if (labelEl && labelEl.dataset.polarity) polarityLayerOut.appendChild(cloneWithBakedStyle(labelEl));
@@ -3735,7 +3736,7 @@ function resolveLoopColor(varStr) {
 // current *computed* presentation onto its corresponding clone, so it
 // renders correctly with zero external CSS once fully detached (used for
 // nodes, labels, polarity badges). Recurses into descendants rather than
-// only baking el itself — a polarity badge is a <g> wrapping a <circle>
+// only baking el itself - a polarity badge is a <g> wrapping a <circle>
 // and a <path>, each styled by its own CSS selector (".polarity-label
 // circle"/".polarity-glyph"), not by anything on the <g> itself; baking
 // only the wrapper left both children with none of that styling once
@@ -3786,7 +3787,7 @@ function exportSvgToPngBlob(svgEl, background) {
   });
 }
 
-// a real download attempt — if the page's sandbox blocks it, the export
+// a real download attempt - if the page's sandbox blocks it, the export
 // dialog's preview image stays open to right-click/long-press and save
 function downloadPng(blob, filename) {
   try {
@@ -3799,14 +3800,14 @@ function downloadPng(blob, filename) {
     a.remove();
     URL.revokeObjectURL(url);
   } catch (err) {
-    // ignore — the dialog's preview is the fallback
+    // ignore - the dialog's preview is the fallback
   }
 }
 
 // ---- PNG export dialog: every PNG button (whole diagram, per loop) opens
 // this first, with a live preview, instead of downloading straight away.
 // The two options persist for the rest of the session. ----
-let exportShowPolarity = true;  // whether exports include the +/− badges (read by buildExportSvgInner)
+let exportShowPolarity = true;  // whether exports include the +/- badges (read by buildExportSvgInner)
 let exportBackground = 'white'; // 'white' or 'transparent'
 let pngExportPending = null;    // { build, filename, blob } for the dialog currently open
 let pngPreviewSeq = 0;          // drops a stale preview if the options change mid-render
@@ -3815,7 +3816,7 @@ const pngExportModal = document.getElementById('png-export-modal');
 const pngExportImg = document.getElementById('png-export-img');
 const pngExportDownloadBtn = document.getElementById('png-export-download');
 
-// build() returns the export SVG — called again whenever an option changes,
+// build() returns the export SVG - called again whenever an option changes,
 // so it must read the diagram fresh rather than reuse one SVG
 function openPngExport(build, filename) {
   pngExportPending = { build, filename, blob: null };
@@ -3831,7 +3832,7 @@ async function renderPngPreview() {
   const blob = await exportSvgToPngBlob(pngExportPending.build(), exportBackground);
   if (seq !== pngPreviewSeq || !pngExportPending) return;
   pngExportPending.blob = blob;
-  // a data URL, not an object URL, so right-click "Save Image As…" works
+  // a data URL, not an object URL, so right-click "Save Image As..." works
   // even after the dialog's state moves on
   const reader = new FileReader();
   reader.onload = () => { if (seq === pngPreviewSeq) pngExportImg.src = reader.result; };
@@ -3868,7 +3869,7 @@ function closePngExport() {
 
 pngExportDownloadBtn.addEventListener('click', () => {
   if (!pngExportPending || !pngExportPending.blob) return;
-  // the dialog stays open afterward — a sandbox-blocked download fails
+  // the dialog stays open afterward - a sandbox-blocked download fails
   // silently, so the preview has to remain available to save by hand
   downloadPng(pngExportPending.blob, pngExportPending.filename);
 });
@@ -3898,7 +3899,7 @@ window.addEventListener('keydown', (e) => {
 
 // ---- import ----
 // Reads a previously-exported {nodes:[{id,level,x,y}], edges:[{source,target}],
-// log:[...]} file back into the live graph — the only way to resume an edit
+// log:[...]} file back into the live graph - the only way to resume an edit
 // session, since a fresh page load always starts from the pristine DATA.
 const importStatus = document.getElementById('import-status');
 
@@ -3912,11 +3913,11 @@ function showImportStatus(text, isError) {
 
 // ---- raw .xmile upload: a client-side port of sd.py's parser, so a
 // Vensim-style export can be dropped straight onto the running page
-// instead of needing the CLI (which needs numpy for layout.py's layout —
+// instead of needing the CLI (which needs numpy for layout.py's layout -
 // not available in a browser). No positions/levels/loops/history exist in
 // this format, so nodes land at the current default level with random
 // positions the live force simulation (startSim(), already used for drag
-// physics) settles afterward — layout.py's own 700-iteration numpy layout
+// physics) settles afterward - layout.py's own 700-iteration numpy layout
 // isn't ported, this reuses the settle behavior the page already has. ----
 
 const XMILE_NS = 'http://docs.oasis-open.org/xmile/ns/XMILE/v1.0';
@@ -3995,9 +3996,9 @@ function parseXmile(xmlText) {
 }
 
 // mirrors sd.py's filter_real_component(): drops any connected component
-// (edges treated as undirected) where every node's name ends in " 0" —
+// (edges treated as undirected) where every node's name ends in " 0" -
 // Vensim's collision-renaming artifact from merging two diagrams into one
-// file — while keeping every other component, however small (a variable
+// file - while keeping every other component, however small (a variable
 // with no causal arrows at all is still real content, not a stray to drop)
 function filterRealComponent(nodes, edges) {
   const parent = new Map(nodes.map(n => [n, n]));
@@ -4024,7 +4025,7 @@ function filterRealComponent(nodes, edges) {
     anyReal = true;
     comp.forEach(n => keep.add(n));
   });
-  if (!anyReal) throw new Error('Every variable in this file looks like a duplicate-diagram artifact — nothing to keep.');
+  if (!anyReal) throw new Error('Every variable in this file looks like a duplicate-diagram artifact - nothing to keep.');
 
   return {
     nodes: nodes.filter(n => keep.has(n)),
@@ -4034,7 +4035,7 @@ function filterRealComponent(nodes, edges) {
 
 // turns a raw .xmile file into the same {nodes, edges, levels, log, loops,
 // loopsDropped} shape importGraph() produces, so it drops into the exact
-// same buildGraph() call site — see the comment block above for what's
+// same buildGraph() call site - see the comment block above for what's
 // necessarily missing (positions/levels/loops/history) compared to a JSON export
 function xmileToGraph(xmlText) {
   const parsed = parseXmile(xmlText);
@@ -4072,7 +4073,7 @@ function xmileToGraph(xmlText) {
 }
 
 // converts an exported (or hand-edited) file into the shape buildGraph()
-// expects — {nodes:[{id,x,y,r,level,in,out}], edges:[{s,t}], levels} — same
+// expects - {nodes:[{id,x,y,r,level,in,out}], edges:[{s,t}], levels} - same
 // derivation build_payload() does in Python, just re-run client-side since
 // an uploaded file only carries the slim export fields
 function importGraph(raw) {
@@ -4080,7 +4081,7 @@ function importGraph(raw) {
     throw new Error('Not a recognized graph file.');
   }
 
-  // a diagram's levels travel with it (see sanitizeLevels()) — fall back to
+  // a diagram's levels travel with it (see sanitizeLevels()) - fall back to
   // this page's own starting palette only if the file predates that (an
   // older export, or one with no "levels" field at all)
   const importedLevels = sanitizeLevels(raw.levels) || DATA.levels.map(l => ({ ...l }));
@@ -4103,7 +4104,7 @@ function importGraph(raw) {
     nodes.push({ id, level, x, y, in: [], out: [] });
   });
   // an empty nodes list is a legitimate import (e.g. a blank template that
-  // only carries a level scheme) — not an error
+  // only carries a level scheme) - not an error
 
   const byIdLocal = new Map(nodes.map(n => [n.id, n]));
   const seenEdge = new Set();
@@ -4126,7 +4127,7 @@ function importGraph(raw) {
   const log = Array.isArray(raw.log) ? raw.log.filter(t => typeof t === 'string') : [];
 
   // keep only loops whose nodes all survived and whose cycle still holds
-  // against the imported edges — re-validated the same way a freshly-picked
+  // against the imported edges - re-validated the same way a freshly-picked
   // loop would be, since the file may have been hand-edited
   const rawLoops = Array.isArray(raw.loops) ? raw.loops : [];
   let loopsDropped = 0;
@@ -4160,7 +4161,7 @@ document.getElementById('import-file-input').addEventListener('change', (e) => {
   const reader = new FileReader();
   reader.onload = () => {
     const text = reader.result;
-    // sniff by extension first, falling back to content — catches a
+    // sniff by extension first, falling back to content - catches a
     // misnamed or extensionless .xmile file the same way either path works
     const isXmile = file.name.toLowerCase().endsWith('.xmile') || /<xmile[\s>]/i.test(text.slice(0, 2000));
 
@@ -4174,7 +4175,7 @@ document.getElementById('import-file-input').addEventListener('change', (e) => {
 
     setMergeMode(false);
     buildGraph(converted); // resets loops = [] as part of the rebuild
-    // a .xmile carries no positions — settle the random scatter above (which
+    // a .xmile carries no positions - settle the random scatter above (which
     // needs the physics running, so free-arrange has to come off for it)
     if (isXmile) { setFreeMode(false); startSim(); }
 
@@ -4189,12 +4190,12 @@ document.getElementById('import-file-input').addEventListener('change', (e) => {
 
     let importMsg, statusMsg;
     if (isXmile) {
-      importMsg = `Loaded ${converted.nodes.length} variable(s), ${converted.edges.length} link(s) from a .xmile file — positions, levels, and loops aren't in that format, so this is a fresh layout at the default level. Assign levels and add feedback loops as usual.`;
-      statusMsg = `Loaded ${converted.nodes.length} variable(s), ${converted.edges.length} link(s) from .xmile — no positions/levels/loops in that format.`;
+      importMsg = `Loaded ${converted.nodes.length} variable(s), ${converted.edges.length} link(s) from a .xmile file - positions, levels, and loops aren't in that format, so this is a fresh layout at the default level. Assign levels and add feedback loops as usual.`;
+      statusMsg = `Loaded ${converted.nodes.length} variable(s), ${converted.edges.length} link(s) from .xmile - no positions/levels/loops in that format.`;
     } else {
       importMsg = `Loaded ${converted.nodes.length} node(s), ${converted.edges.length} edge(s) from uploaded file`;
       if (converted.loops.length) importMsg += `, ${converted.loops.length} loop(s)`;
-      if (converted.loopsDropped) importMsg += ` (${converted.loopsDropped} loop(s) dropped — no longer a valid cycle)`;
+      if (converted.loopsDropped) importMsg += ` (${converted.loopsDropped} loop(s) dropped - no longer a valid cycle)`;
       statusMsg = `Loaded ${converted.nodes.length} node(s), ${converted.edges.length} edge(s).`;
       if (converted.loopsDropped) statusMsg += ` ${converted.loopsDropped} loop(s) dropped.`;
     }
@@ -4231,7 +4232,7 @@ def main() -> None:
     src = sys.argv[1] if len(sys.argv) > 1 else default_src
     dst = sys.argv[2] if len(sys.argv) > 2 else "cld.html"
     html = render(src)
-    Path(dst).write_text(html)
+    Path(dst).write_text(html, encoding="utf-8")  # matches the page's <meta charset>, whatever the system locale
     print(f"wrote {dst} ({len(html)/1024:.0f} KB)")
 
 
