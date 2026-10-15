@@ -938,10 +938,12 @@ input[type="search"]:focus {
 .stage.grabbing { cursor: grabbing; }
 .stage svg { width: 100%; height: 100%; display: block; }
 
+/* the name sits inside its node box — fill is set inline per node (see
+   paintNode()) so it stays legible against whatever color its level has */
 .node-label {
   font-family: 'Public Sans', sans-serif;
   font-size: 10.5px;
-  fill: var(--ink);
+  text-anchor: middle;
   pointer-events: none;
 }
 .node-dot { cursor: grab; stroke: var(--panel); stroke-width: 1.4; touch-action: none; }
@@ -1401,6 +1403,106 @@ function computeRadius(n) {
   return Math.min(9 + 2.8 * Math.sqrt(n.in.length + n.out.length), 24);
 }
 
+// ---- node boxes: each variable is a rounded rectangle with its name
+// word-wrapped inside. The box is sized for the *bold* label width, since
+// a spotlit node's label turns bold and must still fit. n.hw/n.hh are the
+// box's half-width/half-height around the node's center (n.x, n.y). ----
+const NODE_FONT_PX = 10.5;
+const NODE_LINE_H = 13;
+const NODE_PAD_X = 7, NODE_PAD_Y = 5;
+const NODE_MAX_TEXT_W = 112; // wrap names onto more lines past this width
+const NODE_CORNER = 6;
+const labelMeasureCtx = document.createElement('canvas').getContext('2d');
+
+function labelTextWidth(s) {
+  labelMeasureCtx.font = `700 ${NODE_FONT_PX}px 'Public Sans', sans-serif`;
+  return labelMeasureCtx.measureText(s).width;
+}
+
+// greedy word wrap — a single word longer than the max width gets a line
+// to itself and simply widens the box
+function wrapLabel(text) {
+  const lines = [];
+  let cur = '';
+  text.split(/\s+/).filter(Boolean).forEach(w => {
+    const candidate = cur ? cur + ' ' + w : w;
+    if (!cur || labelTextWidth(candidate) <= NODE_MAX_TEXT_W) cur = candidate;
+    else { lines.push(cur); cur = w; }
+  });
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+
+// (re)wraps the label's lines into tspans and resizes the box to fit them
+function layoutNodeBox(n) {
+  const lines = wrapLabel(n.id);
+  n.hw = Math.max(...lines.map(labelTextWidth)) / 2 + NODE_PAD_X;
+  n.hh = (lines.length * NODE_LINE_H) / 2 + NODE_PAD_Y;
+  const t = labelEls.get(n.id);
+  if (t) {
+    t.replaceChildren();
+    const firstY = -((lines.length - 1) * NODE_LINE_H) / 2 + NODE_FONT_PX * 0.35; // 0.35em ≈ half the x-height, so the block centers vertically
+    lines.forEach((line, i) => {
+      const span = document.createElementNS(svgNS, 'tspan');
+      span.setAttribute('x', 0);
+      span.setAttribute('y', firstY + i * NODE_LINE_H);
+      span.textContent = line;
+      t.appendChild(span);
+    });
+  }
+  const el = nodeEls.get(n.id);
+  if (el) {
+    el.setAttribute('width', 2 * n.hw);
+    el.setAttribute('height', 2 * n.hh);
+  }
+  positionNodeEls(n);
+}
+
+// moves one node's box + label to its current (n.x, n.y) — the label is
+// positioned by transform so its tspans can stay relative to the center
+function positionNodeEls(n) {
+  const el = nodeEls.get(n.id);
+  if (el) {
+    el.setAttribute('x', n.x - n.hw);
+    el.setAttribute('y', n.y - n.hh);
+  }
+  const t = labelEls.get(n.id);
+  if (t) t.setAttribute('transform', `translate(${n.x},${n.y})`);
+}
+
+// dark ink on light fills, white on dark ones (WCAG relative luminance)
+function labelColorFor(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return '#ffffff';
+  const v = parseInt(m[1], 16);
+  const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const L = 0.2126 * lin(v >> 16 & 255) + 0.7152 * lin(v >> 8 & 255) + 0.0722 * lin(v & 255);
+  return L > 0.32 ? '#1d232b' : '#ffffff';
+}
+
+function paintNode(id, color) {
+  const el = nodeEls.get(id);
+  if (el) el.setAttribute('fill', color);
+  const t = labelEls.get(id);
+  if (t) t.style.fill = labelColorFor(color);
+}
+
+// the embedded font may not be decoded yet on first build, so the initial
+// measurements could be against a fallback face — re-wrap once it is
+document.fonts.load(`700 ${NODE_FONT_PX}px 'Public Sans'`).then(() => {
+  if (!liveNodes) return;
+  liveNodes.forEach(layoutNodeBox);
+  redrawEdgeGeometry();
+}).catch(() => {});
+
+// distance from a box's center to its border along unit direction (ux, uy)
+function boxPad(n, ux, uy) {
+  const hw = n.hw || 0, hh = n.hh || 0;
+  const tx = Math.abs(ux) > 1e-6 ? hw / Math.abs(ux) : Infinity;
+  const ty = Math.abs(uy) > 1e-6 ? hh / Math.abs(uy) : Infinity;
+  return Math.min(tx, ty);
+}
+
 // dispatches a node click to whichever mode is active: picking nodes for a
 // merge, picking nodes for a feedback loop, or the normal single-select
 // spotlight — free-arrange mode doesn't hijack this: every node is already
@@ -1432,18 +1534,25 @@ function onNodeClick(id) {
 function edgeGeometry(a, b, bidir, bendOverride) {
   const dx = b.x - a.x, dy = b.y - a.y;
   const dist = Math.hypot(dx, dy) || 1;
-  const ux = dx / dist, uy = dy / dist;
   const gap = 3;
   const maxPad = Math.max(dist / 2 - 1, 0); // keeps the two trims from crossing on very short edges
-  const startPad = Math.min((a.r || 0) + gap, maxPad);
-  const endPad = Math.min((b.r || 0) + gap, maxPad);
-  const sx = a.x + ux * startPad, sy = a.y + uy * startPad;
-  const ex = b.x - ux * endPad, ey = b.y - uy * endPad;
-  const mx = (sx + ex) / 2, my = (sy + ey) / 2;
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
   const nx = -dy, ny = dx;
   const autoBow = bidir ? 0 : Math.min(dist * 0.08, 26);
   const bow = bendOverride != null ? bendOverride : autoBow;
   const cx = mx + (nx / dist) * bow, cy = my + (ny / dist) * bow;
+  // a quadratic curve leaves each end heading straight at the control
+  // point, so trimming along that direction lands the end exactly on the
+  // node box's border, however wide the box or bent the curve
+  const trim = (n) => {
+    const tx = cx - n.x, ty = cy - n.y;
+    const td = Math.hypot(tx, ty) || 1;
+    const ux = tx / td, uy = ty / td;
+    const pad = Math.min(boxPad(n, ux, uy) + gap, maxPad);
+    return [n.x + ux * pad, n.y + uy * pad];
+  };
+  const [sx, sy] = trim(a);
+  const [ex, ey] = trim(b);
   return { sx, sy, ex, ey, cx, cy };
 }
 
@@ -1622,16 +1731,13 @@ function updateStats() {
   document.getElementById('stat-edges').textContent = edgeEls.length;
 }
 
-// creates one node's circle + label + listeners and registers it in the
+// creates one node's box + label + listeners and registers it in the
 // live maps — used by buildGraph's initial pass and by mergeNodes() when it
 // creates the merged replacement node
 function createNodeEl(n) {
-  const c = document.createElementNS(svgNS, 'circle');
-  c.setAttribute('cx', n.x);
-  c.setAttribute('cy', n.y);
-  c.setAttribute('r', n.r);
+  const c = document.createElementNS(svgNS, 'rect');
+  c.setAttribute('rx', NODE_CORNER);
   c.setAttribute('class', 'node-dot');
-  c.setAttribute('fill', levelByNum.get(n.level).color);
   c.dataset.id = n.id;
   c.dataset.level = n.level;
   c.addEventListener('click', (ev) => {
@@ -1644,14 +1750,14 @@ function createNodeEl(n) {
   nodeEls.set(n.id, c);
 
   const t = document.createElementNS(svgNS, 'text');
-  t.setAttribute('x', n.x + n.r + 4);
-  t.setAttribute('y', n.y + 3.5);
   t.setAttribute('class', 'node-label');
-  t.textContent = n.id;
   t.dataset.id = n.id;
   t.dataset.level = n.level;
   labelLayer.appendChild(t);
   labelEls.set(n.id, t);
+
+  paintNode(n.id, levelByNum.get(n.level).color);
+  layoutNodeBox(n);
 }
 
 // (re)builds the whole diagram from a data object shaped like DATA — used
@@ -1853,8 +1959,6 @@ function mergeNodes(ids, newName, level) {
   children.forEach(c => addEdge(newName, c));
 
   merged.r = computeRadius(merged);
-  nodeEls.get(newName).setAttribute('r', merged.r);
-  labelEls.get(newName).setAttribute('x', merged.x + merged.r + 4);
 
   rebuildEdgeVisuals();
   updateStats();
@@ -2012,7 +2116,7 @@ function changeNodeLevel(id, newLevel) {
   n.level = newLevel;
 
   const el = nodeEls.get(id);
-  el.setAttribute('fill', levelByNum.get(newLevel).color);
+  paintNode(id, levelByNum.get(newLevel).color);
   el.dataset.level = newLevel;
   const label = labelEls.get(id);
   if (label) label.dataset.level = newLevel;
@@ -2480,7 +2584,7 @@ function renderDetailLevelGrid() {
 // it deliberately does NOT touch the legend's own <input type=color> (that
 // would blur/reset the native picker mid-drag) or re-render any grid
 function applyLevelColorChange(l) {
-  nodeEls.forEach((el, id) => { if (byId.get(id).level === l.level) el.setAttribute('fill', l.color); });
+  nodeEls.forEach((el, id) => { if (byId.get(id).level === l.level) paintNode(id, l.color); });
   document.querySelectorAll(`.swatch[data-swatch-level="${l.level}"]`).forEach(s => { s.style.background = l.color; });
 }
 
@@ -2534,7 +2638,7 @@ function deleteLevel(levelNum) {
     n.level = fallback.level;
     moved++;
     const el = nodeEls.get(n.id);
-    if (el) { el.setAttribute('fill', fallback.color); el.dataset.level = fallback.level; }
+    if (el) { paintNode(n.id, fallback.color); el.dataset.level = fallback.level; }
     const label = labelEls.get(n.id);
     if (label) label.dataset.level = fallback.level;
   });
@@ -2713,14 +2817,7 @@ function clientToWorld(clientX, clientY) {
 }
 
 function applyPositions() {
-  liveNodes.forEach(n => {
-    const el = nodeEls.get(n.id);
-    el.setAttribute('cx', n.x);
-    el.setAttribute('cy', n.y);
-    const label = labelEls.get(n.id);
-    label.setAttribute('x', n.x + n.r + 4);
-    label.setAttribute('y', n.y + 3.5);
-  });
+  liveNodes.forEach(positionNodeEls);
   redrawEdgeGeometry();
 }
 
@@ -3279,16 +3376,12 @@ function fillList(elId, items, otherId, direction) {
   });
 }
 
-// re-derives a node's degree-based dot size after a manual add/remove-edge
-// edit, so "dot size = number of causal links" stays true to what's on screen
+// re-derives a node's degree-based size after a manual add/remove-edge
+// edit — kept on the data, though the drawn box is now sized by its label
 function refreshNodeVisual(id) {
   const n = byId.get(id);
   if (!n) return;
   n.r = computeRadius(n);
-  const el = nodeEls.get(id);
-  if (el) el.setAttribute('r', n.r);
-  const label = labelEls.get(id);
-  if (label) label.setAttribute('x', n.x + n.r + 4);
 }
 
 function wireEdgeAdder(inputId, resultsId, direction) {
@@ -3484,19 +3577,11 @@ function buildExportSvgInner({ nodeIds, edgeFilter, tintColor, tintOverrides }) 
   nodeIds.forEach(id => {
     const n = byId.get(id);
     if (!n) return;
-    minX = Math.min(minX, n.x - n.r);
-    minY = Math.min(minY, n.y - n.r);
-    maxX = Math.max(maxX, n.x + n.r);
-    maxY = Math.max(maxY, n.y + n.r);
-    const labelEl = labelEls.get(id);
-    if (labelEl) {
-      try {
-        const bb = labelEl.getBBox(); // actual rendered label extent, not a guessed width
-        maxX = Math.max(maxX, bb.x + bb.width);
-        minY = Math.min(minY, bb.y);
-        maxY = Math.max(maxY, bb.y + bb.height);
-      } catch (e) { /* unrendered element (e.g. display:none from the level filter) — dot-only box is fine */ }
-    }
+    // the label sits inside its box, so the box alone is the full extent
+    minX = Math.min(minX, n.x - n.hw);
+    minY = Math.min(minY, n.y - n.hh);
+    maxX = Math.max(maxX, n.x + n.hw);
+    maxY = Math.max(maxY, n.y + n.hh);
   });
   if (!Number.isFinite(minX)) { minX = 0; minY = 0; maxX = 100; maxY = 100; } // empty-selection guard
   const vb = { x: minX - PAD, y: minY - PAD, w: (maxX - minX) + 2 * PAD, h: (maxY - minY) + 2 * PAD };
