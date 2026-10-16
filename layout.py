@@ -1,6 +1,5 @@
 """
-Force-directed layout for the CLD graph loaded by sd.py (sd.load_graph:
-the real 44-node map only, reciprocal ties already collapsed to one edge).
+Force-directed layout for the CLD graph loaded by sd.py (sd.load_graph).
 """
 from __future__ import annotations
 

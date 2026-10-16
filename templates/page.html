@@ -161,6 +161,24 @@ __STYLE_CSS__</style>
     </div>
   </div>
 
+  <div class="export-modal" id="xmile-dup-modal" style="display:none">
+    <div class="export-modal-box">
+      <p class="level-heading">Merged duplicate diagram?</p>
+      <p class="restore-note">
+        This file has <span id="xmile-dup-clusters">0</span> separate
+        cluster(s), <strong id="xmile-dup-count">0</strong> variable(s) in
+        total, with names ending in "_0". Vensim adds that suffix when two
+        diagrams are merged into one file, so these are often a duplicate copy
+        rather than real content. The rest of the diagram is kept either way.
+      </p>
+      <p class="restore-note" id="xmile-dup-examples"></p>
+      <div class="detail-actions">
+        <button class="confirm-btn" id="xmile-dup-drop">Drop them</button>
+        <button class="clear-btn" id="xmile-dup-keep">Keep everything</button>
+      </div>
+    </div>
+  </div>
+
   <main class="stage" id="stage">
     <svg id="svg" viewBox="0 0 __CANVAS_W__ __CANVAS_H__" preserveAspectRatio="xMidYMid meet">
       <defs>

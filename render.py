@@ -18,16 +18,19 @@ Usage (needs the project .venv - numpy isn't in system Python, and there's
 no bare `python` on PATH here, only `python3`):
     .venv/bin/python render.py                       # blank starter -> cld.html
     .venv/bin/python render.py my-diagram.xmile out.html
+    .venv/bin/python render.py my-diagram.xmile out.html --drop-suffix _0
     .venv/bin/python render.py my-diagram-edited.json out.html
+
+--drop-suffix (xmile only) drops Vensim merged-diagram duplicates; see sd.py.
 """
 from __future__ import annotations
 
+import argparse
 import base64
 import json
 import math
 import random
 import re
-import sys
 from pathlib import Path
 
 from sd import load_graph
@@ -42,8 +45,8 @@ def _b64(path: Path) -> str:
     return base64.b64encode(path.read_bytes()).decode("ascii")
 
 
-def build_payload(xmile_path: str) -> dict:
-    graph = load_graph(xmile_path)
+def build_payload(xmile_path: str, drop_suffix: str | None = None) -> dict:
+    graph = load_graph(xmile_path, drop_suffix=drop_suffix)
     nodes, edges = graph.nodes, graph.edges
     positions = layout_graph(nodes, edges)
 
@@ -226,8 +229,8 @@ def build_payload_from_json(json_path: str) -> dict:
     }
 
 
-def render(path: str) -> str:
-    data = build_payload_from_json(path) if Path(path).suffix.lower() == ".json" else build_payload(path)
+def render(path: str, drop_suffix: str | None = None) -> str:
+    data = build_payload_from_json(path) if Path(path).suffix.lower() == ".json" else build_payload(path, drop_suffix)
     graph_json = json.dumps(data, separators=(",", ":"))
 
     fonts = {
@@ -260,10 +263,15 @@ def load_template() -> str:
 
 
 def main() -> None:
-    default_src = str(Path(__file__).parent / "empty.json")
-    src = sys.argv[1] if len(sys.argv) > 1 else default_src
-    dst = sys.argv[2] if len(sys.argv) > 2 else "cld.html"
-    html = render(src)
+    ap = argparse.ArgumentParser(description="Render a causal loop diagram (.xmile or edited .json) as a self-contained interactive HTML page.")
+    ap.add_argument("src", nargs="?", default=str(Path(__file__).parent / "empty.json"),
+                    help="input .xmile or .json (default: the blank starter empty.json)")
+    ap.add_argument("dst", nargs="?", default="cld.html", help="output .html (default: cld.html)")
+    ap.add_argument("--drop-suffix", metavar="SUFFIX",
+                    help='xmile only: drop every connected cluster containing a variable named with this suffix, e.g. "_0" for Vensim merged-diagram duplicates')
+    args = ap.parse_args()
+    src, dst = args.src, args.dst
+    html = render(src, drop_suffix=args.drop_suffix)
     Path(dst).write_text(html, encoding="utf-8")  # matches the page's <meta charset>, whatever the system locale
     print(f"wrote {dst} ({len(html)/1024:.0f} KB)")
 

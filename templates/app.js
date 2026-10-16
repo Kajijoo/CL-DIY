@@ -2706,12 +2706,14 @@ function parseXmile(xmlText) {
   return { nodes, edges };
 }
 
-// mirrors sd.py's filter_real_component(): drops any connected component
-// (edges treated as undirected) where every node's name ends in " 0" -
-// Vensim's collision-renaming artifact from merging two diagrams into one
-// file - while keeping every other component, however small (a variable
-// with no causal arrows at all is still real content, not a stray to drop)
-function filterRealComponent(nodes, edges) {
+// mirrors sd.py's drop_suffixed_components(): finds every connected
+// component (edges treated as undirected) containing a variable whose name
+// ends in " 0" - Vensim's "_0" collision-renaming suffix from merging two
+// diagrams into one file, after normalizeName() turned "_" into a space.
+// Returns the set of variables in those components, or null when there are
+// none, or when *every* component has one (dropping would leave nothing).
+const VENSIM_DUP_SUFFIX = ' 0';
+function findSuffixedClusters(nodes, edges) {
   const parent = new Map(nodes.map(n => [n, n]));
   const find = (x) => {
     while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); }
@@ -2721,36 +2723,26 @@ function filterRealComponent(nodes, edges) {
     const rs = find(s), rt = find(t);
     if (rs !== rt) parent.set(rs, rt);
   });
-
   const groups = new Map();
   nodes.forEach(n => {
     const root = find(n);
     if (!groups.has(root)) groups.set(root, []);
     groups.get(root).push(n);
   });
-
-  const keep = new Set();
-  let anyReal = false;
-  groups.forEach(comp => {
-    if (comp.some(n => n.endsWith(' 0'))) return; // spurious "_0" duplicate-diagram cluster
-    anyReal = true;
-    comp.forEach(n => keep.add(n));
-  });
-  if (!anyReal) throw new Error('Every variable in this file looks like a duplicate-diagram artifact - nothing to keep.');
-
-  return {
-    nodes: nodes.filter(n => keep.has(n)),
-    edges: edges.filter(({ s, t }) => keep.has(s) && keep.has(t)),
-  };
+  const suffixed = [...groups.values()].filter(comp => comp.some(n => n.endsWith(VENSIM_DUP_SUFFIX)));
+  if (suffixed.length === 0 || suffixed.length === groups.size) return null;
+  return { nodeIds: new Set(suffixed.flat()), clusterCount: suffixed.length };
 }
 
-// turns a raw .xmile file into the same {nodes, edges, levels, log, loops,
+// turns a parsed .xmile ({nodes, edges} from parseXmile, optionally minus a
+// set of variables to drop) into the same {nodes, edges, levels, log, loops,
 // loopsDropped} shape importGraph() produces, so it drops into the exact
 // same buildGraph() call site - see the comment block above for what's
 // necessarily missing (positions/levels/loops/history) compared to a JSON export
-function xmileToGraph(xmlText) {
-  const parsed = parseXmile(xmlText);
-  const real = filterRealComponent(parsed.nodes, parsed.edges);
+function xmileToGraph(parsed, dropIds) {
+  const real = dropIds
+    ? { nodes: parsed.nodes.filter(n => !dropIds.has(n)), edges: parsed.edges.filter(({ s, t }) => !dropIds.has(s) && !dropIds.has(t)) }
+    : parsed;
 
   const defaultLevel = levels[0].level;
   const nodes = real.nodes.map(id => ({
@@ -2876,47 +2868,90 @@ document.getElementById('import-file-input').addEventListener('change', (e) => {
     // misnamed or extensionless .xmile file the same way either path works
     const isXmile = file.name.toLowerCase().endsWith('.xmile') || /<xmile[\s>]/i.test(text.slice(0, 2000));
 
-    let converted;
     try {
-      converted = isXmile ? xmileToGraph(text) : importGraph(JSON.parse(text));
+      if (!isXmile) { applyImport(importGraph(JSON.parse(text)), false, 0); return; }
+      const parsed = parseXmile(text);
+      const dup = findSuffixedClusters(parsed.nodes, parsed.edges);
+      if (!dup) { applyImport(xmileToGraph(parsed, null), true, 0); return; }
+      // a likely Vensim merged-diagram duplicate - let the user decide
+      // before anything is loaded (see the xmile-dup dialog below)
+      askAboutXmileDuplicates(dup, (choice) => {
+        if (choice === 'drop') applyImport(xmileToGraph(parsed, dup.nodeIds), true, dup.nodeIds.size);
+        else if (choice === 'keep') applyImport(xmileToGraph(parsed, null), true, 0);
+        else showImportStatus('Upload cancelled - the diagram is unchanged.');
+      });
     } catch (err) {
       showImportStatus(err.message || 'Could not read that file.', true);
-      return;
     }
-
-    setMergeMode(false);
-    buildGraph(converted); // resets loops = [] as part of the rebuild
-    // a .xmile carries no positions - settle the random scatter above (which
-    // needs the physics running, so free-arrange has to come off for it)
-    if (isXmile) { setFreeMode(false); startSim(); }
-
-    loops = converted.loops;
-    renderLoopList();
-
-    // replay the uploaded file's own history (already oldest-first) as
-    // muted "history" entries, then log the import itself as the newest
-    // entry, so the panel reads as a continuous timeline across sessions
-    changeLog = [];
-    converted.log.forEach(text => logChange('history', text));
-
-    let importMsg, statusMsg;
-    if (isXmile) {
-      importMsg = `Loaded ${converted.nodes.length} variable(s), ${converted.edges.length} link(s) from a .xmile file - positions, levels, and loops aren't in that format, so this is a fresh layout at the default level. Assign levels and add feedback loops as usual.`;
-      statusMsg = `Loaded ${converted.nodes.length} variable(s), ${converted.edges.length} link(s) from .xmile - no positions/levels/loops in that format.`;
-    } else {
-      importMsg = `Loaded ${converted.nodes.length} node(s), ${converted.edges.length} edge(s) from uploaded file`;
-      if (converted.loops.length) importMsg += `, ${converted.loops.length} loop(s)`;
-      if (converted.loopsDropped) importMsg += ` (${converted.loopsDropped} loop(s) dropped - no longer a valid cycle)`;
-      statusMsg = `Loaded ${converted.nodes.length} node(s), ${converted.edges.length} edge(s).`;
-      if (converted.loopsDropped) statusMsg += ` ${converted.loopsDropped} loop(s) dropped.`;
-    }
-    logChange('import', importMsg);
-    pushUndoCheckpoint(importMsg);
-    showImportStatus(statusMsg);
   };
   reader.onerror = () => showImportStatus('Could not read that file.', true);
   reader.readAsText(file);
 });
+
+// ---- "merged duplicate diagram?" dialog for .xmile uploads ----
+const xmileDupModal = document.getElementById('xmile-dup-modal');
+let xmileDupCallback = null;
+
+function askAboutXmileDuplicates(dup, callback) {
+  xmileDupCallback = callback;
+  document.getElementById('xmile-dup-count').textContent = dup.nodeIds.size;
+  document.getElementById('xmile-dup-clusters').textContent = dup.clusterCount;
+  const examples = [...dup.nodeIds].filter(n => n.endsWith(VENSIM_DUP_SUFFIX)).slice(0, 4);
+  document.getElementById('xmile-dup-examples').textContent = 'For example: ' + examples.map(n => `"${n}"`).join(', ') + (dup.nodeIds.size > examples.length ? ', ...' : '');
+  xmileDupModal.style.display = 'flex';
+}
+
+// choice: 'drop', 'keep', or 'cancel' (Escape / clicking outside the box)
+function closeXmileDupModal(choice) {
+  if (xmileDupModal.style.display === 'none') return;
+  xmileDupModal.style.display = 'none';
+  const cb = xmileDupCallback;
+  xmileDupCallback = null;
+  if (cb) cb(choice);
+}
+document.getElementById('xmile-dup-drop').addEventListener('click', () => closeXmileDupModal('drop'));
+document.getElementById('xmile-dup-keep').addEventListener('click', () => closeXmileDupModal('keep'));
+xmileDupModal.addEventListener('click', (e) => { if (e.target === xmileDupModal) closeXmileDupModal('cancel'); });
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeXmileDupModal('cancel'); });
+
+// loads an already-converted graph (from a JSON export or a .xmile) into
+// the live page, replacing the current diagram. droppedCount is how many
+// merged-duplicate variables the user chose to drop from a .xmile, for the log.
+function applyImport(converted, isXmile, droppedCount) {
+  setMergeMode(false);
+  buildGraph(converted); // resets loops = [] as part of the rebuild
+  // a .xmile carries no positions - settle the random scatter above (which
+  // needs the physics running, so free-arrange has to come off for it)
+  if (isXmile) { setFreeMode(false); startSim(); }
+
+  loops = converted.loops;
+  renderLoopList();
+
+  // replay the uploaded file's own history (already oldest-first) as
+  // muted "history" entries, then log the import itself as the newest
+  // entry, so the panel reads as a continuous timeline across sessions
+  changeLog = [];
+  converted.log.forEach(text => logChange('history', text));
+
+  let importMsg, statusMsg;
+  if (isXmile) {
+    importMsg = `Loaded ${converted.nodes.length} variable(s), ${converted.edges.length} link(s) from a .xmile file - positions, levels, and loops aren't in that format, so this is a fresh layout at the default level. Assign levels and add feedback loops as usual.`;
+    statusMsg = `Loaded ${converted.nodes.length} variable(s), ${converted.edges.length} link(s) from .xmile - no positions/levels/loops in that format.`;
+    if (droppedCount) {
+      importMsg += ` Dropped ${droppedCount} variable(s) from a merged duplicate diagram (names ending in "_0").`;
+      statusMsg += ` Dropped ${droppedCount} merged-duplicate variable(s).`;
+    }
+  } else {
+    importMsg = `Loaded ${converted.nodes.length} node(s), ${converted.edges.length} edge(s) from uploaded file`;
+    if (converted.loops.length) importMsg += `, ${converted.loops.length} loop(s)`;
+    if (converted.loopsDropped) importMsg += ` (${converted.loopsDropped} loop(s) dropped - no longer a valid cycle)`;
+    statusMsg = `Loaded ${converted.nodes.length} node(s), ${converted.edges.length} edge(s).`;
+    if (converted.loopsDropped) statusMsg += ` ${converted.loopsDropped} loop(s) dropped.`;
+  }
+  logChange('import', importMsg);
+  pushUndoCheckpoint(importMsg);
+  showImportStatus(statusMsg);
+}
 
 // ---- search ----
 const searchInput = document.getElementById('search');

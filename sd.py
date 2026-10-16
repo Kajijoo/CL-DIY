@@ -9,22 +9,22 @@ variable's causal parents were sketched but never quantified. There are no
 just read off the declared causal parents of each variable and treat that
 as a directed graph: parent -> child.
 
-The raw file also turned out to hold two disconnected variable sets: 44
-plain-named variables and a second, 34-variable set Vensim auto-suffixed
-"_0" (its collision-renaming convention, which fires when two diagrams get
-merged into one file). Confirmed with the file's owner: only the 44-node
-set is the real diagram, so load_graph() below drops the "_0" cluster and
-also collapses any reciprocal A->B / B->A pair down to a single tie.
+Every variable and link in the file is kept by default. One optional cleanup
+exists for a Vensim quirk: when two diagrams get merged into one file,
+Vensim renames the colliding copy's variables with a suffix such as "_0".
+If such a copy is not real content, pass drop_suffix="_0" to load_graph()
+(or --drop-suffix _0 on the command line) to drop every connected cluster
+containing a variable with that suffix.
 
-Usage (no numpy dependency here, so plain python3 is fine — there's no bare
-`python` on PATH in this environment, only python3):
-    python3 sd.py zuidoost.xmile out.json
+Usage (no numpy dependency here, so plain python3 is fine):
+    python3 sd.py my-diagram.xmile out.json
+    python3 sd.py my-diagram.xmile out.json --drop-suffix _0
 """
 from __future__ import annotations
 
+import argparse
 import json
 import re
-import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 
@@ -144,21 +144,20 @@ def components(nodes: list[str], edges: list[tuple[str, str]]) -> list[list[str]
     return sorted(groups.values(), key=len, reverse=True)
 
 
-def filter_real_component(
-    nodes: list[str], edges: list[tuple[str, str]]
+def drop_suffixed_components(
+    nodes: list[str], edges: list[tuple[str, str]], suffix: str
 ) -> tuple[list[str], list[tuple[str, str]]]:
-    """Drop any spurious "_0"-suffixed component(s) — Vensim's collision-
-    renaming artifact from merging two diagrams into one file (confirmed
-    for zuidoost.xmile's own second, duplicate 34-node cluster). Keeps
-    every other component as-is, however many there are and however small
-    — a variable someone typed into the diagram but never drew a causal
-    arrow to or from is still real content (nieuwwest.xmile has a few of
-    these single, edge-less nodes), not a stray to silently drop just
-    because it isn't part of the one big connected cluster."""
+    """Drop every connected component that contains a variable whose raw
+    name ends in `suffix` (e.g. "_0", Vensim's collision-renaming suffix
+    when two diagrams are merged into one file). Every other component is
+    kept as-is, however small: a variable with no causal arrows at all is
+    still real content."""
+    # names are compared after normalize_name(), which turns "_" into a space
+    norm_suffix = normalize_name("x" + suffix)[1:]
     comps = components(nodes, edges)
-    real = [c for c in comps if not any(n.endswith(" 0") for n in c)]
+    real = [c for c in comps if not any(n.endswith(norm_suffix) for n in c)]
     if not real:
-        raise ValueError("every component is '_0'-suffixed — nothing to keep")
+        raise ValueError(f"every component contains a '{suffix}'-suffixed variable - nothing to keep")
     keep = {n for c in real for n in c}
     kept_nodes = [n for n in nodes if n in keep]
     kept_edges = [(s, t) for s, t in edges if s in keep and t in keep]
@@ -180,20 +179,29 @@ def dedupe_reciprocal_edges(edges: list[tuple[str, str]]) -> list[tuple[str, str
     return kept
 
 
-def load_graph(path: str) -> Graph:
-    """Parse the file and drop the spurious "_0" map. Reciprocal A->B / B->A
-    pairs are kept as real feedback loops — call dedupe_reciprocal_edges()
-    on the result if you want them collapsed to a single tie instead."""
+def load_graph(path: str, drop_suffix: str | None = None) -> Graph:
+    """Parse the file into a graph of every variable and link. With
+    drop_suffix (e.g. "_0"), also drop Vensim merged-diagram duplicates via
+    drop_suffixed_components(). Reciprocal A->B / B->A pairs are kept as
+    real feedback loops - call dedupe_reciprocal_edges() on the result if
+    you want them collapsed to a single tie instead."""
     graph = parse_xmile(path)
-    nodes, edges = filter_real_component(graph.nodes, graph.edges)
+    if not drop_suffix:
+        return graph
+    nodes, edges = drop_suffixed_components(graph.nodes, graph.edges, drop_suffix)
     return Graph(nodes=nodes, edges=edges)
 
 
 def main() -> None:
-    src = sys.argv[1] if len(sys.argv) > 1 else "zuidoost.xmile"
-    dst = sys.argv[2] if len(sys.argv) > 2 else None
+    ap = argparse.ArgumentParser(description="Parse a Vensim XMILE causal loop diagram into a node/edge JSON graph.")
+    ap.add_argument("src", help="input .xmile file")
+    ap.add_argument("dst", nargs="?", help="output .json file (omit to print a preview)")
+    ap.add_argument("--drop-suffix", metavar="SUFFIX",
+                    help='drop every connected cluster containing a variable named with this suffix, e.g. "_0" for Vensim merged-diagram duplicates')
+    args = ap.parse_args()
+    src, dst = args.src, args.dst
 
-    graph = load_graph(src)
+    graph = load_graph(src, drop_suffix=args.drop_suffix)
     print(f"{len(graph.nodes)} nodes, {len(graph.edges)} edges")
 
     payload = {
