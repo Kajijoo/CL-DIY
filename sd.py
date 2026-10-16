@@ -1,3 +1,6 @@
+# Copyright 2026 Jiri Kaan and Wageningen University
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Parse a Vensim-exported XMILE causal loop diagram (CLD) into a simple
 node/edge graph structure.

@@ -1,3 +1,6 @@
+# Copyright 2026 Jiri Kaan and Wageningen University
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Default starting "levels" — a free-form grouping axis used to color-code
 and filter nodes (e.g. proximate vs. distal causes, or whatever axis

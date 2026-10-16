@@ -1,4 +1,7 @@
 
+// Copyright 2026 Jiri Kaan and Wageningen University
+// SPDX-License-Identifier: Apache-2.0
+
 const svgNS = "http://www.w3.org/2000/svg";
 const svg = document.getElementById('svg');
 const viewport = document.getElementById('viewport');

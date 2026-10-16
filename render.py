@@ -1,3 +1,6 @@
+# Copyright 2026 Jiri Kaan and Wageningen University
+# SPDX-License-Identifier: Apache-2.0
+
 """
 CL-DIY - render a causal loop diagram (CLD) as a self-contained,
 interactive HTML page: free-arrange nodes, editable levels, link polarity,

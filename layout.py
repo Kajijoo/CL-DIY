@@ -1,3 +1,6 @@
+# Copyright 2026 Jiri Kaan and Wageningen University
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Force-directed layout for the CLD graph loaded by sd.py (sd.load_graph).
 """
