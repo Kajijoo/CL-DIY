@@ -75,6 +75,7 @@ asks whether to drop the duplicate.
 | `layout.py` | Force-directed layout for imported XMILE diagrams |
 | `node_levels.py` | The default levels |
 | `empty.json` | The blank starting diagram |
+| `examples/example.json` | A small synthetic example diagram (open it with "Upload graph") |
 | `fonts/` | Embedded fonts (Public Sans, Fraunces) and their licences |
 
 ## License

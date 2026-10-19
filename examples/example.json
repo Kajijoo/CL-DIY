@@ -1,0 +1,49 @@
+{
+  "nodes": [
+    {"id": "Funding for local initiatives", "level": 4, "x": 458, "y": 311},
+    {"id": "Work pressure", "level": 4, "x": 1088, "y": 311},
+    {"id": "Community centre activities", "level": 3, "x": 458, "y": 521},
+    {"id": "Volunteer workload", "level": 3, "x": 618, "y": 402},
+    {"id": "Trust between neighbours", "level": 3, "x": 968, "y": 521},
+    {"id": "Safe public spaces", "level": 3, "x": 1102, "y": 675},
+    {"id": "Participation in local activities", "level": 2, "x": 766, "y": 612},
+    {"id": "Social connection", "level": 2, "x": 618, "y": 773},
+    {"id": "Social support", "level": 2, "x": 408, "y": 864},
+    {"id": "Time and energy", "level": 1, "x": 1032, "y": 423},
+    {"id": "Mental well-being", "level": 1, "x": 828, "y": 885},
+    {"id": "Physical activity", "level": 1, "x": 1052, "y": 836},
+    {"id": "Loneliness", "level": 1, "x": 548, "y": 969}
+  ],
+  "edges": [
+    {"source": "Funding for local initiatives", "target": "Community centre activities", "polarity": "+"},
+    {"source": "Community centre activities", "target": "Participation in local activities", "polarity": "+"},
+    {"source": "Participation in local activities", "target": "Volunteer workload", "polarity": "+"},
+    {"source": "Volunteer workload", "target": "Community centre activities", "polarity": "-"},
+    {"source": "Participation in local activities", "target": "Social connection", "polarity": "+"},
+    {"source": "Social connection", "target": "Mental well-being", "polarity": "+"},
+    {"source": "Mental well-being", "target": "Participation in local activities", "polarity": "+"},
+    {"source": "Participation in local activities", "target": "Trust between neighbours", "polarity": "+"},
+    {"source": "Trust between neighbours", "target": "Safe public spaces", "polarity": "+"},
+    {"source": "Safe public spaces", "target": "Participation in local activities", "polarity": "+"},
+    {"source": "Work pressure", "target": "Time and energy", "polarity": "-"},
+    {"source": "Time and energy", "target": "Participation in local activities", "polarity": "+"},
+    {"source": "Participation in local activities", "target": "Physical activity", "polarity": "+"},
+    {"source": "Physical activity", "target": "Mental well-being", "polarity": "+"},
+    {"source": "Social connection", "target": "Social support", "polarity": "+"},
+    {"source": "Social support", "target": "Mental well-being", "polarity": "+"},
+    {"source": "Social connection", "target": "Loneliness", "polarity": "-"},
+    {"source": "Loneliness", "target": "Mental well-being", "polarity": "-"}
+  ],
+  "loops": [
+    {"name": "Connection", "type": "R", "nodes": ["Participation in local activities", "Social connection", "Mental well-being"]},
+    {"name": "Neighbourhood trust", "type": "R", "nodes": ["Participation in local activities", "Trust between neighbours", "Safe public spaces"]},
+    {"name": "Volunteer burnout", "type": "B", "nodes": ["Participation in local activities", "Volunteer workload", "Community centre activities"]}
+  ],
+  "levels": [
+    {"level": 1, "key": "individual", "label": "Individual", "color": "#3987e5"},
+    {"level": 2, "key": "social-network", "label": "Social network", "color": "#2f9e6b"},
+    {"level": 3, "key": "community", "label": "Community", "color": "#c98a2c"},
+    {"level": 4, "key": "policy-and-system", "label": "Policy and system", "color": "#b24f4f"}
+  ],
+  "log": ["Synthetic example diagram for illustration only; not based on real workshop data."]
+}
