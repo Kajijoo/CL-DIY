@@ -98,6 +98,7 @@ __STYLE_CSS__</style>
     <details class="changelog" id="changelog">
       <summary>Change log (<span id="changelog-count">0</span>)</summary>
       <ul class="changelog-list" id="changelog-list"></ul>
+      <button class="link-btn changelog-export" id="export-log-btn" title="Download every change-log entry, oldest first, with its comment - opens in any spreadsheet">Download change log (.csv)</button>
     </details>
     <button class="mode-btn" id="comment-toggle" data-active="0" title="When on, each edit (deleting, merging, renaming, adding a link, ...) asks for an optional comment, saved in the change log and the JSON export">
       <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M2 2.5 H14 V11 H7.5 L4.5 14 V11 H2 Z"/></svg>
@@ -121,7 +122,7 @@ __STYLE_CSS__</style>
 
   <div class="export-modal" id="export-modal" style="display:none">
     <div class="export-modal-box">
-      <p class="level-heading">Edited graph JSON</p>
+      <p class="level-heading" id="export-heading">Edited graph JSON</p>
       <p class="restore-note">
         A direct download may be blocked by this page's sandbox - the text
         below always works: it's pre-selected, so Cmd/Ctrl+C copies it, or

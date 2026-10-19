@@ -2306,16 +2306,32 @@ document.getElementById('export-btn').addEventListener('click', () => {
     // oldest first; a plain string unless the entry has a comment
     log: changeLog.slice().reverse().map(e => e.comment ? { text: e.text, comment: e.comment } : e.text),
   };
-  const text = JSON.stringify(payload, null, 2);
+  exportText(JSON.stringify(payload, null, 2), 'cld-edited.json', 'application/json', 'Edited graph JSON');
+});
 
-  // best-effort real download - artifact pages are sandboxed and this can
-  // be silently blocked, so it's a bonus, never the only path to the data
+// one row per change-log entry, oldest first - for a spreadsheet or a
+// methods appendix. Entries replayed from an uploaded file keep their text
+// and comment but show as "history", since their original type isn't saved.
+document.getElementById('export-log-btn').addEventListener('click', () => {
+  const cell = v => /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  const rows = [['step', 'type', 'action', 'comment']];
+  changeLog.slice().reverse().forEach((e, i) => rows.push([String(i + 1), e.type, e.text, e.comment || '']));
+  const csv = rows.map(r => r.map(cell).join(',')).join('\r\n') + '\r\n';
+  exportText(csv, 'cld-change-log.csv', 'text/csv', 'Change log CSV', '\uFEFF'); // BOM so Excel reads it as UTF-8
+});
+
+// best-effort real download of text, plus the guaranteed fallback: the same
+// text, pre-selected, in a copyable box. bom (optional) is prepended to the
+// downloaded file only, never the copyable text.
+function exportText(text, filename, mime, heading, bom) {
+  // artifact pages are sandboxed and the download can be silently blocked,
+  // so it's a bonus, never the only path to the data
   try {
-    const blob = new Blob([text], { type: 'application/json' });
+    const blob = new Blob([(bom || '') + text], { type: mime });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'cld-edited.json';
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -2324,12 +2340,12 @@ document.getElementById('export-btn').addEventListener('click', () => {
     // ignore - the modal below is the guaranteed fallback
   }
 
-  // guaranteed fallback: the JSON, pre-selected, in a copyable text box
+  document.getElementById('export-heading').textContent = heading;
   exportTextarea.value = text;
   exportModal.style.display = 'flex';
   exportTextarea.focus();
   exportTextarea.select();
-});
+}
 
 exportCopyBtn.addEventListener('click', () => {
   exportTextarea.focus();

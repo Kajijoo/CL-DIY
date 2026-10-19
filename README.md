@@ -28,6 +28,7 @@ Everything happens in your browser. Nothing is uploaded anywhere.
 - **Undo, search and a change log** of every edit. Turn on "Comment on
   edits" to note why each change was made (deleting or merging variables,
   adding links, ...); you can also comment on any entry in the log later.
+  The change log, with its comments, downloads as a CSV file.
 - **Import and export:**
   - Save and reload your work as JSON (positions, levels, loops and the
     change log included).

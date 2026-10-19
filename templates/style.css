@@ -700,6 +700,7 @@ input[type="search"]:focus {
   white-space: pre-wrap;
 }
 .comment-textarea { resize: vertical; line-height: 1.4; }
+.changelog-export { margin-top: 8px; }
 
 .stage {
   position: relative;
