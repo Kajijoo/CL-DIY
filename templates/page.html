@@ -99,6 +99,10 @@ __STYLE_CSS__</style>
       <summary>Change log (<span id="changelog-count">0</span>)</summary>
       <ul class="changelog-list" id="changelog-list"></ul>
     </details>
+    <button class="mode-btn" id="comment-toggle" data-active="0" title="When on, each edit (deleting, merging, renaming, adding a link, ...) asks for an optional comment, saved in the change log and the JSON export">
+      <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M2 2.5 H14 V11 H7.5 L4.5 14 V11 H2 Z"/></svg>
+      Comment on edits
+    </button>
     <button class="mode-btn mode-btn-danger" id="clear-all-btn" title="Delete every node and link, so you can build a completely new diagram from scratch">
       <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6 L16 6"/><path d="M7 6 L7 4 L13 4 L13 6"/><path d="M5.5 6 L6.3 16 L13.7 16 L14.5 6"/></svg>
       Clear entire diagram...
@@ -157,6 +161,19 @@ __STYLE_CSS__</style>
       <div class="detail-actions">
         <button class="confirm-btn" id="png-export-download" disabled>Download</button>
         <button class="clear-btn" id="png-export-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="export-modal" id="comment-modal" style="display:none">
+    <div class="export-modal-box">
+      <p class="level-heading">Comment on this edit</p>
+      <p class="restore-note" id="comment-action"></p>
+      <textarea id="comment-input" class="mini-input comment-textarea" rows="3" placeholder="Why was this change made? (optional)"></textarea>
+      <p class="restore-note">Cmd/Ctrl+Enter saves, Esc skips. Leave it empty for no comment.</p>
+      <div class="detail-actions">
+        <button class="clear-btn" id="comment-skip">Skip</button>
+        <button class="confirm-btn" id="comment-save">Save comment</button>
       </div>
     </div>
   </div>

@@ -88,9 +88,41 @@ const LOOP_COLORS = ['var(--loop-1)', 'var(--loop-2)', 'var(--loop-3)', 'var(--l
 // single delete that bridges five ties logs once, not five times
 let changeLog = [];
 
-function logChange(type, text) {
-  changeLog.unshift({ type, text });
+// "comment on edits" mode - when on, every user edit opens a small dialog
+// asking for an optional comment (why it was made), stored on that edit's
+// change-log entry. Off by default; any entry can also be commented later
+// from the change log itself.
+let commentMode = false;
+// entries that are bookkeeping, not an edit the user made - never prompted for
+const UNPROMPTED_LOG_TYPES = new Set(['history', 'import', 'undo']);
+let pendingCommentEntry = null;
+
+function logChange(type, text, comment) {
+  const entry = { type, text, comment: comment || '' };
+  changeLog.unshift(entry);
   renderChangeLog();
+  // one user action can log several entries (a delete that breaks loops
+  // also logs each loop removal) - only the first one, the action itself,
+  // is prompted for, once the action has finished
+  if (commentMode && !UNPROMPTED_LOG_TYPES.has(type) && !pendingCommentEntry) {
+    pendingCommentEntry = entry;
+    queueMicrotask(() => {
+      const e = pendingCommentEntry;
+      pendingCommentEntry = null;
+      if (e) openCommentModal(e, false);
+    });
+  }
+  return entry;
+}
+
+// a log line from a JSON file: a plain string, or {text, comment} once it
+// has a comment. Returns {text, comment}, or null if it isn't usable.
+function normalizeLogLine(raw) {
+  if (typeof raw === 'string') return { text: raw, comment: '' };
+  if (raw && typeof raw === 'object' && typeof raw.text === 'string') {
+    return { text: raw.text, comment: typeof raw.comment === 'string' ? raw.comment : '' };
+  }
+  return null;
 }
 
 function renderChangeLog() {
@@ -106,11 +138,70 @@ function renderChangeLog() {
   changeLog.forEach(entry => {
     const li = document.createElement('li');
     li.className = 'type-' + entry.type;
-    li.textContent = entry.text;
+    const row = document.createElement('div');
+    row.className = 'changelog-row';
+    const text = document.createElement('span');
+    text.textContent = entry.text;
+    const btn = document.createElement('button');
+    btn.className = 'changelog-comment-btn';
+    btn.innerHTML = COMMENT_ICON_SVG;
+    btn.title = entry.comment ? 'Edit comment' : 'Add a comment';
+    btn.setAttribute('aria-label', btn.title);
+    btn.addEventListener('click', () => openCommentModal(entry, true));
+    row.appendChild(text);
+    row.appendChild(btn);
+    li.appendChild(row);
+    if (entry.comment) {
+      const c = document.createElement('p');
+      c.className = 'changelog-comment';
+      c.textContent = entry.comment;
+      li.appendChild(c);
+    }
     list.appendChild(li);
   });
 }
+
+const COMMENT_ICON_SVG = '<svg class="icon-sm" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" aria-hidden="true"><path d="M1 1.5 H9 V7 H4.5 L2.5 9 V7 H1 Z"/></svg>';
 renderChangeLog();
+
+// ---- comment dialog: one edit's change-log entry at a time ----
+const commentModal = document.getElementById('comment-modal');
+const commentInput = document.getElementById('comment-input');
+let commentModalEntry = null;
+
+// fromLog: opened from the change log's own button (editing an existing
+// entry) rather than right after an edit in comment mode
+function openCommentModal(entry, fromLog) {
+  commentModalEntry = entry;
+  document.getElementById('comment-action').textContent = entry.text;
+  document.getElementById('comment-skip').textContent = fromLog ? 'Cancel' : 'Skip';
+  commentInput.value = entry.comment || '';
+  commentModal.style.display = 'flex';
+  commentInput.focus();
+}
+
+function closeCommentModal(save) {
+  if (commentModal.style.display === 'none') return;
+  if (save && commentModalEntry) {
+    commentModalEntry.comment = commentInput.value.trim();
+    renderChangeLog();
+  }
+  commentModal.style.display = 'none';
+  commentModalEntry = null;
+}
+
+document.getElementById('comment-save').addEventListener('click', () => closeCommentModal(true));
+document.getElementById('comment-skip').addEventListener('click', () => closeCommentModal(false));
+commentModal.addEventListener('click', (e) => { if (e.target === commentModal) closeCommentModal(false); });
+commentInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); closeCommentModal(true); }
+});
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCommentModal(false); });
+
+document.getElementById('comment-toggle').addEventListener('click', (e) => {
+  commentMode = !commentMode;
+  e.currentTarget.dataset.active = commentMode ? '1' : '0';
+});
 
 // a small "remove" icon reused by every per-row remove button - inline SVG,
 // not a text glyph, so it doesn't depend on the embedded fonts (or the
@@ -578,7 +669,8 @@ function restoreLoopsAndLogFrom(source) {
   });
   renderLoopList();
 
-  (source.log || []).forEach(text => logChange('history', text));
+  (source.log || []).map(normalizeLogLine).filter(Boolean)
+    .forEach(l => logChange('history', l.text, l.comment));
   if (source.loopsDropped) {
     logChange('history', `${source.loopsDropped} feedback loop(s) from the source file were dropped - no longer a valid cycle.`);
   }
@@ -2211,7 +2303,8 @@ document.getElementById('export-btn').addEventListener('click', () => {
     }),
     loops: loops.map(l => ({ name: l.name, type: l.type, nodes: l.nodes })), // no color - reassigned fresh on import
     levels: levels.map(l => ({ level: l.level, key: l.key, label: l.label, color: l.color })),
-    log: changeLog.slice().reverse().map(e => e.text), // oldest first
+    // oldest first; a plain string unless the entry has a comment
+    log: changeLog.slice().reverse().map(e => e.comment ? { text: e.text, comment: e.comment } : e.text),
   };
   const text = JSON.stringify(payload, null, 2);
 
@@ -2830,7 +2923,7 @@ function importGraph(raw) {
 
   nodes.forEach(n => { n.r = computeRadius(n); });
 
-  const log = Array.isArray(raw.log) ? raw.log.filter(t => typeof t === 'string') : [];
+  const log = Array.isArray(raw.log) ? raw.log.map(normalizeLogLine).filter(Boolean) : [];
 
   // keep only loops whose nodes all survived and whose cycle still holds
   // against the imported edges - re-validated the same way a freshly-picked
@@ -2934,7 +3027,7 @@ function applyImport(converted, isXmile, droppedCount) {
   // muted "history" entries, then log the import itself as the newest
   // entry, so the panel reads as a continuous timeline across sessions
   changeLog = [];
-  converted.log.forEach(text => logChange('history', text));
+  converted.log.forEach(l => logChange('history', l.text, l.comment));
 
   let importMsg, statusMsg;
   if (isXmile) {

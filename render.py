@@ -218,7 +218,17 @@ def build_payload_from_json(json_path: str) -> dict:
         else:
             loops_dropped += 1
 
-    log_payload = [line for line in (raw.get("log") or []) if isinstance(line, str)]
+    # each line is a plain string, or {text, comment} once it has a comment
+    log_payload: list[str | dict] = []
+    for line in raw.get("log") or []:
+        if isinstance(line, str):
+            log_payload.append(line)
+        elif isinstance(line, dict) and isinstance(line.get("text"), str):
+            comment = line.get("comment")
+            if isinstance(comment, str) and comment.strip():
+                log_payload.append({"text": line["text"], "comment": comment.strip()})
+            else:
+                log_payload.append(line["text"])
 
     return {
         "nodes": nodes_payload,

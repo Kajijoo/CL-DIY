@@ -681,6 +681,25 @@ input[type="search"]:focus {
 .changelog-list li.type-merge, .changelog-list li.type-rename { border-color: var(--accent); }
 .changelog-list li.type-restore { border-color: var(--ink-soft); font-style: italic; }
 .changelog-list li.type-history, .changelog-list li.type-import { border-color: var(--ink-soft); font-style: italic; }
+.changelog-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+.changelog-comment-btn {
+  flex: none;
+  background: none;
+  border: none;
+  padding: 1px 2px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  opacity: 0.45;
+}
+.changelog-list li:hover .changelog-comment-btn, .changelog-comment-btn:focus-visible { opacity: 1; }
+.changelog-comment-btn:hover { color: var(--accent); }
+.changelog-comment {
+  margin: 2px 0 0;
+  color: var(--ink);
+  font-style: normal;
+  white-space: pre-wrap;
+}
+.comment-textarea { resize: vertical; line-height: 1.4; }
 
 .stage {
   position: relative;
