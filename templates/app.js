@@ -92,7 +92,7 @@ let changeLog = [];
 // asking for an optional comment (why it was made), stored on that edit's
 // change-log entry. Off by default; any entry can also be commented later
 // from the change log itself.
-let commentMode = false;
+let commentMode = true;
 // entries that are bookkeeping, not an edit the user made - never prompted for
 const UNPROMPTED_LOG_TYPES = new Set(['history', 'import', 'undo']);
 let pendingCommentEntry = null;
@@ -175,6 +175,8 @@ function openCommentModal(entry, fromLog) {
   commentModalEntry = entry;
   document.getElementById('comment-action').textContent = entry.text;
   document.getElementById('comment-skip').textContent = fromLog ? 'Cancel' : 'Skip';
+  // turning comment mode off only makes sense for the automatic prompt
+  document.getElementById('comment-off').style.display = fromLog ? 'none' : '';
   commentInput.value = entry.comment || '';
   commentModal.style.display = 'flex';
   commentInput.focus();
@@ -192,16 +194,21 @@ function closeCommentModal(save) {
 
 document.getElementById('comment-save').addEventListener('click', () => closeCommentModal(true));
 document.getElementById('comment-skip').addEventListener('click', () => closeCommentModal(false));
+document.getElementById('comment-off').addEventListener('click', () => {
+  closeCommentModal(true);
+  setCommentMode(false);
+});
 commentModal.addEventListener('click', (e) => { if (e.target === commentModal) closeCommentModal(false); });
 commentInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); closeCommentModal(true); }
 });
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCommentModal(false); });
 
-document.getElementById('comment-toggle').addEventListener('click', (e) => {
-  commentMode = !commentMode;
-  e.currentTarget.dataset.active = commentMode ? '1' : '0';
-});
+function setCommentMode(on) {
+  commentMode = on;
+  document.getElementById('comment-toggle').dataset.active = on ? '1' : '0';
+}
+document.getElementById('comment-toggle').addEventListener('click', () => setCommentMode(!commentMode));
 
 // a small "remove" icon reused by every per-row remove button - inline SVG,
 // not a text glyph, so it doesn't depend on the embedded fonts (or the

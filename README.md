@@ -25,9 +25,10 @@ Everything happens in your browser. Nothing is uploaded anywhere.
   loops at once. CL-DIY checks that every saved loop is a real cycle.
 - **Layout:** drag variables anywhere. Nodes stay where you put them; turn
   on the layout springs when you want the diagram to tidy itself.
-- **Undo, search and a change log** of every edit. Turn on "Comment on
-  edits" to note why each change was made (deleting or merging variables,
-  adding links, ...); you can also comment on any entry in the log later.
+- **Undo, search and a change log** of every edit. "Comment on edits" is
+  on by default: each change (deleting or merging variables, adding links,
+  ...) asks for an optional note on why it was made. Turn it off from the
+  prompt or the button; you can also comment on any entry in the log later.
   The change log, with its comments, downloads as a CSV file.
 - **Import and export:**
   - Save and reload your work as JSON (positions, subsystems, loops and the
