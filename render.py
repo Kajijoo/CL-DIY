@@ -110,13 +110,13 @@ def _sanitize_levels(raw_levels: object) -> list[dict] | None:
         if num in seen_nums:
             continue
         label = rl.get("label")
-        label = label.strip() if isinstance(label, str) and label.strip() else f"Level {num}"
+        label = label.strip() if isinstance(label, str) and label.strip() else f"Subsystem {num}"
         color = rl.get("color")
         if not (isinstance(color, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", color)):
             color = "#6da7ec"
         key = rl.get("key")
         if not (isinstance(key, str) and key.strip()):
-            key = re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-") or f"level-{num}"
+            key = re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-") or f"subsystem-{num}"
         seen_nums.add(num)
         out.append({"level": num, "key": key, "label": label, "color": color})
     if not out:

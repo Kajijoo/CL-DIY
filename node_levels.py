@@ -17,8 +17,8 @@ information of its own — build_payload_from_json() prefers whatever
 from __future__ import annotations
 
 LEVEL_META = {
-    1: {"key": "level-1", "label": "Level 1", "color": "#3987e5"},
-    2: {"key": "level-2", "label": "Level 2", "color": "#2f9e6b"},
-    3: {"key": "level-3", "label": "Level 3", "color": "#c98a2c"},
-    4: {"key": "level-4", "label": "Level 4", "color": "#b24f4f"},
+    1: {"key": "subsystem-1", "label": "Subsystem 1", "color": "#3987e5"},
+    2: {"key": "subsystem-2", "label": "Subsystem 2", "color": "#2f9e6b"},
+    3: {"key": "subsystem-3", "label": "Subsystem 3", "color": "#c98a2c"},
+    4: {"key": "subsystem-4", "label": "Subsystem 4", "color": "#b24f4f"},
 }

@@ -948,8 +948,8 @@ function changeNodeLevel(id, newLevel) {
   const label = labelEls.get(id);
   if (label) label.dataset.level = newLevel;
 
-  logChange('level', `Changed level of "${id}": ${oldLabel} -> ${newLabel}`);
-  pushUndoCheckpoint(`Changed level of "${id}": ${oldLabel} -> ${newLabel}`);
+  logChange('subsystem', `Changed subsystem of "${id}": ${oldLabel} -> ${newLabel}`);
+  pushUndoCheckpoint(`Changed subsystem of "${id}": ${oldLabel} -> ${newLabel}`);
   refreshLevelVisibility(); // the level filter may now hide/show it differently
   selectNode(id); // refresh the picker's active state
 }
@@ -1329,11 +1329,11 @@ function sanitizeLevels(rawLevels) {
     if (!rl || typeof rl !== 'object') return;
     const num = Number(rl.level);
     if (!Number.isInteger(num) || seen.has(num)) return;
-    const label = typeof rl.label === 'string' && rl.label.trim() ? rl.label.trim() : `Level ${num}`;
+    const label = typeof rl.label === 'string' && rl.label.trim() ? rl.label.trim() : `Subsystem ${num}`;
     const color = typeof rl.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(rl.color) ? rl.color : '#6da7ec';
     const key = typeof rl.key === 'string' && rl.key.trim()
       ? rl.key.trim()
-      : (label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `level-${num}`);
+      : (label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `subsystem-${num}`);
     seen.add(num);
     out.push({ level: num, key, label, color });
   });
@@ -1431,8 +1431,8 @@ function startLevelRename(l, labelEl) {
     const oldLabel = l.label;
     if (newLabel !== oldLabel) {
       l.label = newLabel;
-      logChange('level-edit', `Renamed level "${oldLabel}" -> "${newLabel}"`);
-      pushUndoCheckpoint(`Renamed level "${oldLabel}" -> "${newLabel}"`);
+      logChange('subsystem-edit', `Renamed subsystem "${oldLabel}" -> "${newLabel}"`);
+      pushUndoCheckpoint(`Renamed subsystem "${oldLabel}" -> "${newLabel}"`);
     }
     renderAllLevelGrids();
   });
@@ -1441,21 +1441,21 @@ function startLevelRename(l, labelEl) {
 function addLevel() {
   const palette = ['#3987e5', '#2f9e6b', '#c98a2c', '#b24f4f', '#7d5bb5', '#1f9aa3', '#c2588a', '#6b7d3d'];
   levelIdSeq += 1;
-  const l = { level: levelIdSeq, key: `level-${levelIdSeq}`, label: `Level ${levelIdSeq}`, color: palette[levels.length % palette.length] };
+  const l = { level: levelIdSeq, key: `subsystem-${levelIdSeq}`, label: `Subsystem ${levelIdSeq}`, color: palette[levels.length % palette.length] };
   levels.push(l);
   activeLevel[l.level] = true;
   rebuildLevelByNum();
-  logChange('level-edit', `Added level "${l.label}"`);
-  pushUndoCheckpoint(`Added level "${l.label}"`);
+  logChange('subsystem-edit', `Added subsystem "${l.label}"`);
+  pushUndoCheckpoint(`Added subsystem "${l.label}"`);
   renderAllLevelGrids();
 }
 
 function deleteLevel(levelNum) {
-  if (levels.length <= 1) { alert("Can't delete the last remaining level - every variable needs one."); return; }
+  if (levels.length <= 1) { alert("Can't delete the last remaining subsystem - every variable needs one."); return; }
   const l = levelByNum.get(levelNum);
   if (!l) return;
   const fallback = levels.find(x => x.level !== levelNum);
-  if (!confirm(`Delete level "${l.label}"? Any variable on it moves to "${fallback.label}".`)) return;
+  if (!confirm(`Delete subsystem "${l.label}"? Any variable on it moves to "${fallback.label}".`)) return;
 
   let moved = 0;
   liveNodes.forEach(n => {
@@ -1475,9 +1475,9 @@ function deleteLevel(levelNum) {
   if (mergeLevel === levelNum) mergeLevel = fallback.level;
   refreshLevelVisibility();
 
-  let msg = `Deleted level "${l.label}"`;
+  let msg = `Deleted subsystem "${l.label}"`;
   if (moved) msg += ` - ${moved} variable(s) moved to "${fallback.label}"`;
-  logChange('level-edit', msg);
+  logChange('subsystem-edit', msg);
   pushUndoCheckpoint(msg);
   renderAllLevelGrids();
 }
@@ -1493,25 +1493,25 @@ function renderLevelLegend() {
     swatch.type = 'color';
     swatch.className = 'swatch level-color-input';
     swatch.value = l.color;
-    swatch.title = "Change this level's color";
+    swatch.title = "Change this subsystem's color";
     swatch.addEventListener('click', (ev) => ev.stopPropagation());
     swatch.addEventListener('input', () => { l.color = swatch.value; applyLevelColorChange(l); });
     swatch.addEventListener('change', () => {
-      logChange('level-edit', `Recolored level "${l.label}"`);
-      pushUndoCheckpoint(`Recolored level "${l.label}"`);
+      logChange('subsystem-edit', `Recolored subsystem "${l.label}"`);
+      pushUndoCheckpoint(`Recolored subsystem "${l.label}"`);
     });
 
     const label = document.createElement('span');
     label.className = 'level-label';
     label.textContent = l.label;
-    label.title = 'Click to rename this level';
+    label.title = 'Click to rename this subsystem';
     label.addEventListener('click', (ev) => { ev.stopPropagation(); startLevelRename(l, label); });
 
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
     delBtn.className = 'level-delete-btn';
     delBtn.innerHTML = X_ICON_SVG;
-    delBtn.title = 'Delete this level';
+    delBtn.title = 'Delete this subsystem';
     delBtn.addEventListener('click', (ev) => { ev.stopPropagation(); deleteLevel(l.level); });
 
     row.appendChild(swatch);
@@ -1528,7 +1528,7 @@ function renderLevelLegend() {
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.className = 'level-add-btn';
-  addBtn.textContent = '+ Add a level';
+  addBtn.textContent = '+ Add a subsystem';
   addBtn.addEventListener('click', addLevel);
   levelGrid.appendChild(addBtn);
 }
@@ -3047,8 +3047,8 @@ function applyImport(converted, isXmile, droppedCount) {
 
   let importMsg, statusMsg;
   if (isXmile) {
-    importMsg = `Loaded ${converted.nodes.length} variable(s), ${converted.edges.length} link(s) from a .xmile file - positions, levels, and loops aren't in that format, so this is a fresh layout at the default level. Assign levels and add feedback loops as usual.`;
-    statusMsg = `Loaded ${converted.nodes.length} variable(s), ${converted.edges.length} link(s) from .xmile - no positions/levels/loops in that format.`;
+    importMsg = `Loaded ${converted.nodes.length} variable(s), ${converted.edges.length} link(s) from a .xmile file - positions, subsystems, and loops aren't in that format, so this is a fresh layout in the default subsystem. Assign subsystems and add feedback loops as usual.`;
+    statusMsg = `Loaded ${converted.nodes.length} variable(s), ${converted.edges.length} link(s) from .xmile - no positions/subsystems/loops in that format.`;
     if (droppedCount) {
       importMsg += ` Dropped ${droppedCount} variable(s) from a merged duplicate diagram (names ending in "_0").`;
       statusMsg += ` Dropped ${droppedCount} merged-duplicate variable(s).`;

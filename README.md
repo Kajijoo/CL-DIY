@@ -18,8 +18,8 @@ Everything happens in your browser. Nothing is uploaded anywhere.
 
 - **Variables and links:** add, rename, merge and delete variables; add
   causal links and mark each one as positive (+) or negative (-).
-- **Levels:** colour-code variables by group (for example individual,
-  community, system). Levels can be renamed, recoloured, added and removed.
+- **Subsystems:** colour-code variables by group (for example individual,
+  community, system). Subsystems can be renamed, recoloured, added and removed.
 - **Feedback loops:** trace a loop by clicking its variables in order, save
   it as reinforcing (R) or balancing (B), and highlight one or several
   loops at once. CL-DIY checks that every saved loop is a real cycle.
@@ -30,7 +30,7 @@ Everything happens in your browser. Nothing is uploaded anywhere.
   adding links, ...); you can also comment on any entry in the log later.
   The change log, with its comments, downloads as a CSV file.
 - **Import and export:**
-  - Save and reload your work as JSON (positions, levels, loops and the
+  - Save and reload your work as JSON (positions, subsystems, loops and the
     change log included).
   - Upload a Vensim `.xmile` file directly.
   - Export the whole diagram, or individual loops, as a PNG with a white or
@@ -76,7 +76,7 @@ asks whether to drop the duplicate.
 | `templates/` | The page itself: `page.html`, `style.css`, `app.js` |
 | `sd.py` | Parses Vensim XMILE files into a graph |
 | `layout.py` | Force-directed layout for imported XMILE diagrams |
-| `node_levels.py` | The default levels |
+| `node_levels.py` | The default subsystems |
 | `empty.json` | The blank starting diagram |
 | `examples/example.json` | A small synthetic example diagram (open it with "Upload graph") |
 | `fonts/` | Embedded fonts (Public Sans, Fraunces) and their licences |
