@@ -84,6 +84,11 @@ asks whether to drop the duplicate.
 | `examples/example.json` | A small synthetic example diagram (open it with "Upload graph") |
 | `fonts/` | Embedded fonts (Public Sans, Fraunces) and their licences |
 
+## Citing CL-DIY
+
+If you use CL-DIY in your work, please cite the accompanying paper
+(preprint link coming soon).
+
 ## License
 
 Copyright 2026 Jiri Kaan and Wageningen University.

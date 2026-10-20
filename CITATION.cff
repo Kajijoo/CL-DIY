@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+message: "If you use CL-DIY, please cite the accompanying paper (preprint link coming soon)."
+title: "CL-DIY: Causal Loop? Do It Yourself!"
+abstract: >-
+  CL-DIY is an open-source, browser-based editor for building, exploring and
+  refining causal loop diagrams. A diagram lives in a single self-contained
+  HTML file that anyone can open in a web browser, with no installation, no
+  account and no server. Users can edit variables and links, group variables
+  into subsystems, trace and label feedback loops, and comment on each change,
+  and can save their work as HTML, JSON or Vensim XMILE.
+type: software
+version: 1.0.0
+date-released: 2026-10-20
+license: Apache-2.0
+repository-code: "https://github.com/Kajijoo/CL-DIY"
+keywords:
+  - causal loop diagrams
+  - system dynamics
+  - participatory modelling
+  - group model building
+authors:
+  - family-names: Kaan
+    given-names: Jiri
+    orcid: "https://orcid.org/0000-0003-2668-5303"
+    affiliation: Wageningen University
+  - family-names: Ulug
+    given-names: Ciska
+    orcid: "https://orcid.org/0000-0003-4764-6143"
+    affiliation: Wageningen University
+  - family-names: Thompson
+    given-names: Kristina
+    orcid: "https://orcid.org/0000-0002-2570-3365"
+    affiliation: Wageningen University
+  - family-names: Wagemakers
+    given-names: Annemarie
+    orcid: "https://orcid.org/0000-0002-1212-6888"
+    affiliation: Wageningen University
+  - family-names: Moore
+    given-names: Spencer
+    orcid: "https://orcid.org/0000-0002-1229-9578"
+    affiliation: Wageningen University
