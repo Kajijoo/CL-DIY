@@ -113,12 +113,29 @@ __STYLE_CSS__</style>
       Upload graph (.json / .xmile)
     </button>
     <input type="file" id="import-file-input" accept=".json,.xmile,application/json" style="display:none" />
-    <button class="mode-btn" id="export-btn">
+    <button class="mode-btn" id="save-btn" title="Save this diagram as a web page, a JSON file or a Vensim XMILE file">
       <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3 L10 12"/><path d="M6 8 L10 12 L14 8"/><path d="M4 16 L16 16"/></svg>
-      Download edited graph (.json)
+      Save...
     </button>
     <p class="import-status" id="import-status" style="display:none"></p>
   </aside>
+
+  <div class="export-modal" id="save-modal" style="display:none">
+    <div class="export-modal-box">
+      <p class="level-heading">Save diagram</p>
+      <div class="save-options">
+        <button class="mode-btn" id="save-html">Web page (.html)</button>
+        <p class="restore-note">This editor with your diagram inside. Open it in any browser to keep working - nothing else needed.</p>
+        <button class="mode-btn" id="save-json">Graph data (.json)</button>
+        <p class="restore-note">Everything in the diagram - positions, subsystems, loops and the change log. Upload it here again, or build a page with render.py.</p>
+        <button class="mode-btn" id="save-xmile">Vensim (.xmile)</button>
+        <p class="restore-note">Variables and causal links only, for Vensim or other system dynamics tools. Positions, link signs, subsystems and loops are not included.</p>
+      </div>
+      <div class="detail-actions">
+        <button class="clear-btn" id="save-close">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <div class="export-modal" id="export-modal" style="display:none">
     <div class="export-modal-box">

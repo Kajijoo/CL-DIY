@@ -2,6 +2,12 @@
 // Copyright 2026 Jiri Kaan and Wageningen University
 // SPDX-License-Identifier: Apache-2.0
 
+// the page exactly as it loaded, before this script touches the DOM - the
+// "Save as web page" option copies it with the DATA line swapped for the
+// current diagram (this script is the last thing in <body>, so nothing after
+// it is missing). No fetch(location.href): that fails on a local file.
+const PAGE_SOURCE_AT_LOAD = document.documentElement.outerHTML;
+
 const svgNS = "http://www.w3.org/2000/svg";
 const svg = document.getElementById('svg');
 const viewport = document.getElementById('viewport');
@@ -2294,8 +2300,93 @@ const exportModal = document.getElementById('export-modal');
 const exportTextarea = document.getElementById('export-textarea');
 const exportCopyBtn = document.getElementById('export-copy');
 
-document.getElementById('export-btn').addEventListener('click', () => {
-  const payload = {
+// ---- save dialog: one Save button, three formats ----
+const saveModal = document.getElementById('save-modal');
+document.getElementById('save-btn').addEventListener('click', () => { saveModal.style.display = 'flex'; });
+function closeSaveModal() { saveModal.style.display = 'none'; }
+document.getElementById('save-close').addEventListener('click', closeSaveModal);
+saveModal.addEventListener('click', (e) => { if (e.target === saveModal) closeSaveModal(); });
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSaveModal(); });
+document.getElementById('save-json').addEventListener('click', () => {
+  closeSaveModal();
+  exportText(JSON.stringify(exportPayload(), null, 2), 'cld-edited.json', 'application/json', 'Edited graph JSON');
+});
+document.getElementById('save-html').addEventListener('click', () => {
+  closeSaveModal();
+  exportText(buildSavedPage(), 'cld-diagram.html', 'text/html', 'Web page (save as a .html file)');
+});
+document.getElementById('save-xmile').addEventListener('click', () => {
+  closeSaveModal();
+  exportText(buildXmile(), 'cld-diagram.xmile', 'application/xml', 'Vensim XMILE');
+});
+
+// a copy of this page with the current diagram baked in as its DATA - the
+// same shape render.py embeds, so the saved file opens exactly like one
+// built with `render.py my-diagram.json out.html`
+function buildSavedPage() {
+  const data = {
+    nodes: liveNodes.map(n => ({
+      id: n.id, level: n.level,
+      x: Math.round(n.x * 10) / 10, y: Math.round(n.y * 10) / 10,
+      r: n.r, in: n.in.slice(), out: n.out.slice(),
+    })),
+    edges: edgeEls.map(e => ({ s: e.s, t: e.t, polarity: e.polarity || null, bend: e.bend != null ? Math.round(e.bend * 10) / 10 : null })),
+    levels: levels.map(l => ({ level: l.level, key: l.key, label: l.label, color: l.color })),
+    canvas: DATA.canvas,
+    counts: { nodes: liveNodes.length, edges: edgeEls.length },
+    ...(({ loops, log }) => ({ loops, log }))(exportPayload()),
+    loopsDropped: 0,
+  };
+  // escape "<" (so a node name holding a closing script tag can't end the
+  // script early)
+  // and everything non-ASCII, like render.py's json.dumps
+  const json = JSON.stringify(data).replace(/[<\u007f-\uffff]/g, c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+  const marker = 'const DATA = ';
+  const start = PAGE_SOURCE_AT_LOAD.indexOf(marker);
+  const end = PAGE_SOURCE_AT_LOAD.indexOf('\n', start);
+  return PAGE_SOURCE_AT_LOAD.slice(0, start) + marker + json + ';' + PAGE_SOURCE_AT_LOAD.slice(end);
+}
+
+// Vensim-style XMILE: one <aux> per variable, its causes as
+// "A FUNCTION OF(...)" - exactly what parseXmile() below (and sd.py) reads
+// back. Positions, polarity, subsystems and loops have no place in it.
+function buildXmile() {
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  // Vensim writes spaces as "_" and quotes names with other punctuation
+  const vensimName = id => {
+    const n = id.replace(/["\\]/g, '').replace(/\s+/g, '_');
+    return /^[A-Za-z0-9_]+$/.test(n) ? n : '"' + n + '"';
+  };
+  const auxes = liveNodes.map(n => {
+    const causes = n.in.map(vensimName).join(',');
+    return `\t\t\t<aux name="${esc(vensimName(n.id))}">\n\t\t\t\t<eqn>A FUNCTION OF(${esc(causes)})</eqn>\n\t\t\t</aux>`;
+  });
+  return [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    `<xmile version="1.0" xmlns="${XMILE_NS}">`,
+    '\t<header>',
+    '\t\t<vendor>CL-DIY</vendor>',
+    '\t\t<product version="1.0">CL-DIY</product>',
+    '\t</header>',
+    '\t<sim_specs>',
+    '\t\t<start>0</start>',
+    '\t\t<stop>100</stop>',
+    '\t\t<dt>1</dt>',
+    '\t</sim_specs>',
+    '\t<model>',
+    '\t\t<variables>',
+    ...auxes,
+    '\t\t</variables>',
+    '\t</model>',
+    '</xmile>',
+    '',
+  ].join('\n');
+}
+
+// the slim, documented JSON export format - also what render.py and the
+// upload button read
+function exportPayload() {
+  return {
     nodes: liveNodes.map(n => ({
       id: n.id,
       level: n.level,
@@ -2313,8 +2404,7 @@ document.getElementById('export-btn').addEventListener('click', () => {
     // oldest first; a plain string unless the entry has a comment
     log: changeLog.slice().reverse().map(e => e.comment ? { text: e.text, comment: e.comment } : e.text),
   };
-  exportText(JSON.stringify(payload, null, 2), 'cld-edited.json', 'application/json', 'Edited graph JSON');
-});
+}
 
 // one row per change-log entry, oldest first - for a spreadsheet or a
 // methods appendix. Entries replayed from an uploaded file keep their text

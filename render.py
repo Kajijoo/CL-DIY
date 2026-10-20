@@ -11,7 +11,7 @@ render() inlines those, the fonts and the graph data into one HTML file.
 
 Accepts either a .xmile source (a Vensim-style export, parsed via sd.py and
 force-directed-laid-out via layout.py) or an already-edited graph export
-(.json - the shape the app's own "Download edited graph" button produces:
+(.json - the shape the app's Save -> "Graph data (.json)" option produces:
 positions, levels, loops and the change log already baked in, rendered
 as-is with no re-layout). With no argument, renders empty.json - a blank
 starting diagram - so `python render.py` on its own gives you a working
@@ -126,7 +126,7 @@ def _sanitize_levels(raw_levels: object) -> list[dict] | None:
 
 def build_payload_from_json(json_path: str) -> dict:
     """Build the page payload directly from an exported/edited graph JSON -
-    the shape the app's own "Download edited graph (.json)" button produces:
+    the shape the app's Save -> "Graph data (.json)" option produces:
     {nodes:[{id,level,x,y}], edges:[{source,target[,polarity]}], loops, log}.
     No layout pass: positions are already baked in. Mirrors importGraph() in
     the embedded JS template (trim/dedupe, level/coordinate fallbacks, edge

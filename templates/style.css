@@ -799,6 +799,8 @@ input[type="search"]:focus {
   z-index: 50;
   padding: 20px;
 }
+.save-options { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.save-options .restore-note { margin: 0 0 8px; }
 .export-modal-box {
   background: var(--panel);
   border: 1px solid var(--line);
