@@ -13,6 +13,7 @@ version: 1.0.0
 date-released: 2026-10-20
 license: Apache-2.0
 repository-code: "https://github.com/Kajijoo/CL-DIY"
+doi: 10.5281/zenodo.23505749
 keywords:
   - causal loop diagrams
   - system dynamics

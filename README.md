@@ -1,5 +1,7 @@
 # CL-DIY
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23505749.svg)](https://doi.org/10.5281/zenodo.23505749)
+
 CL-DIY is a do-it-yourself editor for causal loop diagrams (CLDs). It runs
 as a single, self-contained HTML page: no server, no install, no account.
 Open the file in a browser, build or import a diagram, and export it as an
@@ -88,6 +90,10 @@ asks whether to drop the duplicate.
 
 If you use CL-DIY in your work, please cite the accompanying paper
 (preprint link coming soon).
+
+Every release of the software is archived on Zenodo:
+[10.5281/zenodo.23505749](https://doi.org/10.5281/zenodo.23505749) (this DOI
+always points to the latest version).
 
 ## License
 
