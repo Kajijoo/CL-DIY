@@ -2315,6 +2315,10 @@ document.getElementById('save-html').addEventListener('click', () => {
   closeSaveModal();
   exportText(buildSavedPage(), 'cld-diagram.html', 'text/html', 'Web page (save as a .html file)');
 });
+document.getElementById('save-csv').addEventListener('click', () => {
+  closeSaveModal();
+  exportChangeLogCsv();
+});
 document.getElementById('save-xmile').addEventListener('click', () => {
   closeSaveModal();
   exportText(buildXmile(), 'cld-diagram.xmile', 'application/xml', 'Vensim XMILE');
@@ -2409,13 +2413,15 @@ function exportPayload() {
 // one row per change-log entry, oldest first - for a spreadsheet or a
 // methods appendix. Entries replayed from an uploaded file keep their text
 // and comment but show as "history", since their original type isn't saved.
-document.getElementById('export-log-btn').addEventListener('click', () => {
+// (also offered in the Save dialog)
+function exportChangeLogCsv() {
   const cell = v => /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
   const rows = [['step', 'type', 'action', 'comment']];
   changeLog.slice().reverse().forEach((e, i) => rows.push([String(i + 1), e.type, e.text, e.comment || '']));
   const csv = rows.map(r => r.map(cell).join(',')).join('\r\n') + '\r\n';
   exportText(csv, 'cld-change-log.csv', 'text/csv', 'Change log CSV', '\uFEFF'); // BOM so Excel reads it as UTF-8
-});
+}
+document.getElementById('export-log-btn').addEventListener('click', exportChangeLogCsv);
 
 // best-effort real download of text, plus the guaranteed fallback: the same
 // text, pre-selected, in a copyable box. bom (optional) is prepended to the
