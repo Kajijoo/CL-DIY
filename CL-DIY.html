@@ -1580,6 +1580,49 @@ function pointAtT(geo, t) {
   };
 }
 
+// polarity badges sit a set distance back from the arrow tip rather than at
+// a fixed fraction of the curve, so a short (or highlighted, thicker) link
+// doesn't put its badge on top of the arrowhead: at least the longest
+// arrowhead (7.5 x a 2.2px highlighted stroke, ~16px) + the badge's 7px
+// radius + a small gap, and otherwise ~a quarter of the curve back, as before
+const BADGE_CLEARANCE = 28;
+const CURVE_SAMPLES = 16;
+
+// t at which the arc length measured from one end (fromEnd: the target end,
+// t = 1; otherwise the source end, t = 0) reaches dist - by walking a few
+// straight chords along the curve, plenty accurate at this scale
+function tAtDistance(geo, dist, fromEnd) {
+  let prev = pointAtT(geo, fromEnd ? 1 : 0), acc = 0;
+  for (let i = 1; i <= CURVE_SAMPLES; i++) {
+    const p = pointAtT(geo, fromEnd ? 1 - i / CURVE_SAMPLES : i / CURVE_SAMPLES);
+    const seg = Math.hypot(p.x - prev.x, p.y - prev.y);
+    if (acc + seg >= dist) {
+      const f = (i - 1 + (dist - acc) / (seg || 1)) / CURVE_SAMPLES;
+      return fromEnd ? 1 - f : f;
+    }
+    acc += seg; prev = p;
+  }
+  return 0.5;
+}
+
+function curveLength(geo) {
+  let prev = pointAtT(geo, 0), len = 0;
+  for (let i = 1; i <= CURVE_SAMPLES; i++) {
+    const p = pointAtT(geo, i / CURVE_SAMPLES);
+    len += Math.hypot(p.x - prev.x, p.y - prev.y); prev = p;
+  }
+  return len;
+}
+
+// where along the curve a badge for the arrowhead at that end goes; never
+// past the middle (a very short link has no room to clear the arrowhead),
+// and a two-way link keeps its two badges apart
+function badgeT(geo, atTarget, bidir) {
+  const len = curveLength(geo);
+  const dist = Math.min(Math.max(0.26 * len, BADGE_CLEARANCE), len / 2 - (bidir ? 9 : 0));
+  return tAtDistance(geo, Math.max(dist, 0), atTarget);
+}
+
 function positionLabel(g, geo, t) {
   const p = pointAtT(geo, t);
   g.setAttribute('transform', `translate(${p.x},${p.y})`);
@@ -1595,8 +1638,8 @@ function redrawEdgeGeometry() {
     entry.el.setAttribute('d', d);
     if (entry.hitEl) entry.hitEl.setAttribute('d', d); // wide invisible drag/hover target, same geometry
     if (entry.stripeEls) entry.stripeEls.forEach(el => el.setAttribute('d', d)); // multi-loop overlay, same geometry as the base path
-    if (entry.fwdLabelEl) positionLabel(entry.fwdLabelEl, geo, 0.74); // near the s->t arrowhead, at the target end
-    if (entry.revLabelEl) positionLabel(entry.revLabelEl, geo, 0.26); // near the t->s arrowhead, at the source end
+    if (entry.fwdLabelEl) positionLabel(entry.fwdLabelEl, geo, badgeT(geo, true, entry.bidir)); // near the s->t arrowhead, at the target end
+    if (entry.revLabelEl) positionLabel(entry.revLabelEl, geo, badgeT(geo, false, entry.bidir)); // near the t->s arrowhead, at the source end
   });
 }
 
