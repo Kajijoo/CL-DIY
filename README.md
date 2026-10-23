@@ -18,8 +18,9 @@ Everything happens in your browser. Nothing is uploaded anywhere.
 
 ## Features
 
-- **Variables and links:** add, rename, merge and delete variables; add
-  causal links and mark each one as positive (+) or negative (-).
+- **Variables and links:** add, rename, merge and delete variables; draw
+  causal links by dragging from one variable to another, and mark each one
+  as positive (+) or negative (-).
 - **Subsystems:** colour-code variables by group (for example individual,
   community, system). Subsystems can be renamed, recoloured, added and removed.
 - **Feedback loops:** trace a loop by clicking its variables in order, save

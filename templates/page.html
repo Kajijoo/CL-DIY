@@ -49,6 +49,11 @@ __STYLE_CSS__</style>
       </div>
     </div>
 
+    <button class="mode-btn" id="link-toggle" data-active="0" title="Drag from one variable to another to add a causal link (or hold Shift while dragging, any time)">
+      <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13 L12.5 3.5"/><path d="M7 3.5 L12.5 3.5 L12.5 9"/></svg>
+      Draw links
+    </button>
+    <p class="restore-note" id="link-hint" style="display:none">Drag from a cause to its effect to add a link. Hold Shift to do this without this mode. Esc cancels.</p>
     <button class="mode-btn" id="merge-toggle" data-active="0">
       <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="6" cy="8" r="5"/><circle cx="10" cy="8" r="5"/></svg>
       Merge nodes...
@@ -241,6 +246,9 @@ __STYLE_CSS__</style>
       <defs>
         <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M0,0 L8,4 L0,8 Z" class="arrowhead"></path>
+        </marker>
+        <marker id="arrow-draft" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
+          <path d="M0,0 L8,4 L0,8 Z" fill="var(--accent)"></path>
         </marker>
         <marker id="arrow-lit" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
           <path d="M0,0 L8,4 L0,8 Z" fill="var(--arrow-lit-color, var(--spotlight))"></path>

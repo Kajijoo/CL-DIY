@@ -42,6 +42,13 @@ viewport.appendChild(edgeLayer);
 viewport.appendChild(nodeLayer);
 viewport.appendChild(labelLayer);
 viewport.appendChild(polarityLayer);
+// the dashed arrow that follows the pointer while a link is being drawn
+// (see startLinkDraw()) - on top of everything, never hit-testable
+const linkDraftEl = document.createElementNS(svgNS, 'line');
+linkDraftEl.setAttribute('class', 'link-draft');
+linkDraftEl.setAttribute('marker-end', 'url(#arrow-draft)');
+linkDraftEl.style.display = 'none';
+viewport.appendChild(linkDraftEl);
 
 // live graph state - reassigned wholesale by buildGraph(), mutated in place
 // by addEdge()/removeEdge()/removeNode()/mergeNodes() as the user edits the diagram
@@ -57,6 +64,7 @@ let mergeMode = false, mergePicked = [], mergeLevel = 1;
 // declaration line executes throws, even though the reference is inside a
 // function body, so the declaration has to sit ahead of buildGraph(DATA).
 let addNodeMode = false, addNodeLevel = 1;
+let linkMode = false, drawLink = null; // "Draw links" mode, and the link-drag in progress
 
 // free-arrange mode - see setFreeMode()/togglePin() near the drag-physics
 // code below for what "pinned" actually does to a node
@@ -860,6 +868,7 @@ function setAddNodeMode(on) {
   if (on) {
     if (mergeMode) setMergeMode(false); // every picking/creating mode is mutually exclusive (free-arrange isn't one - it stays as-is)
     if (loopMode) setLoopMode(false);
+    if (linkMode) setLinkMode(false);
   }
   addNodeMode = on;
   document.getElementById('add-node-toggle').dataset.active = on ? '1' : '0';
@@ -890,6 +899,7 @@ document.getElementById('add-node-name').addEventListener('keydown', (e) => {
 function setMergeMode(on) {
   if (on && loopMode) setLoopMode(false); // the picking modes are mutually exclusive
   if (on && addNodeMode) setAddNodeMode(false);
+  if (on && linkMode) setLinkMode(false);
   mergeMode = on;
   document.getElementById('merge-toggle').dataset.active = on ? '1' : '0';
   document.getElementById('merge-panel').style.display = on ? '' : 'none';
@@ -984,6 +994,7 @@ document.getElementById('merge-confirm').addEventListener('click', () => {
 function setLoopMode(on) {
   if (on && mergeMode) setMergeMode(false); // the picking modes are mutually exclusive
   if (on && addNodeMode) setAddNodeMode(false);
+  if (on && linkMode) setLinkMode(false);
   loopMode = on;
   document.getElementById('loop-toggle').dataset.active = on ? '1' : '0';
   document.getElementById('loop-panel').style.display = on ? '' : 'none';
@@ -1728,6 +1739,7 @@ function startNodeDrag(ev, n) {
   ev.stopPropagation();
   if (ev.button !== undefined && ev.button !== 0) return;
   if (dragEdge) return; // an edge drag already owns this pointer gesture
+  if (linkMode || ev.shiftKey) { startLinkDraw(ev, n); return; } // draw a link instead of moving the node
   const el = nodeEls.get(n.id);
   el.setPointerCapture(ev.pointerId);
   el.classList.add('dragging');
@@ -1766,6 +1778,114 @@ window.addEventListener('pointerup', (ev) => {
   }
   dragNode = null;
   settleFrames = 0;
+});
+
+// ---- draw a link by dragging from one node (the cause) to another (the
+// effect) - in "Draw links" mode, or with Shift held in any mode. A dashed
+// arrow follows the pointer and snaps to the box under it; releasing there
+// adds the link exactly like the detail panel's "+ Add an effect" does
+// (change log, undo, comment prompt). Releasing anywhere else does nothing. ----
+function setLinkMode(on) {
+  if (on) {
+    if (mergeMode) setMergeMode(false);
+    if (loopMode) setLoopMode(false);
+    if (addNodeMode) setAddNodeMode(false);
+  }
+  linkMode = on;
+  document.getElementById('link-toggle').dataset.active = on ? '1' : '0';
+  document.getElementById('link-hint').style.display = on ? '' : 'none';
+  stage.classList.toggle('link-mode', on);
+}
+document.getElementById('link-toggle').addEventListener('click', () => setLinkMode(!linkMode));
+
+// pointer position in diagram coordinates, via the viewport group's own
+// screen transform - unlike clientToWorld() (fine for the relative offsets
+// node dragging needs), this also accounts for the SVG's viewBox scaling,
+// so it can be compared with node positions directly
+function pointerToDiagram(ev) {
+  const pt = svg.createSVGPoint();
+  pt.x = ev.clientX; pt.y = ev.clientY;
+  const p = pt.matrixTransform(viewport.getScreenCTM().inverse());
+  return { x: p.x, y: p.y };
+}
+
+// the topmost visible node box under a diagram-space point, if any
+function nodeAtWorld(w) {
+  for (let i = liveNodes.length - 1; i >= 0; i--) {
+    const n = liveNodes[i];
+    if (activeLevel[n.level] === false) continue; // hidden by the subsystem filter
+    if (Math.abs(w.x - n.x) <= n.hw && Math.abs(w.y - n.y) <= n.hh) return n;
+  }
+  return null;
+}
+
+function startLinkDraw(ev, n) {
+  nodeEls.get(n.id).setPointerCapture(ev.pointerId);
+  drawLink = { from: n.id, pointerId: ev.pointerId, target: null, moved: false };
+  updateLinkDraft(pointerToDiagram(ev));
+}
+
+function setLinkTarget(id) {
+  if (drawLink.target === id) return;
+  const prev = drawLink.target && nodeEls.get(drawLink.target);
+  if (prev) prev.classList.remove('link-target');
+  drawLink.target = id;
+  if (id) nodeEls.get(id).classList.add('link-target');
+}
+
+function updateLinkDraft(w) {
+  const a = byId.get(drawLink.from);
+  const over = nodeAtWorld(w);
+  setLinkTarget(over && over.id !== a.id ? over.id : null);
+  const b = drawLink.target ? byId.get(drawLink.target) : null;
+  const end = b || w;
+  const dx = end.x - a.x, dy = end.y - a.y, d = Math.hypot(dx, dy);
+  // nothing to draw while the pointer is still inside the source box
+  if (d < 1 || (!b && Math.abs(dx) <= a.hw && Math.abs(dy) <= a.hh)) { linkDraftEl.style.display = 'none'; return; }
+  const ux = dx / d, uy = dy / d;
+  const startPad = boxPad(a, ux, uy) + 2, endPad = b ? boxPad(b, ux, uy) + 3 : 0;
+  linkDraftEl.setAttribute('x1', a.x + ux * startPad);
+  linkDraftEl.setAttribute('y1', a.y + uy * startPad);
+  linkDraftEl.setAttribute('x2', end.x - ux * endPad);
+  linkDraftEl.setAttribute('y2', end.y - uy * endPad);
+  linkDraftEl.style.display = '';
+}
+
+function endLinkDraw(commit) {
+  const { from, target, moved } = drawLink;
+  setLinkTarget(null);
+  linkDraftEl.style.display = 'none';
+  drawLink = null;
+  suppressClick = moved; // a drag isn't also a click on the source node
+  if (!commit || !target) return;
+  if (edgeEls.some(e => e.s === from && e.t === target)) {
+    showImportStatus(`"${from}" -> "${target}" already exists.`);
+    return;
+  }
+  if (!addEdge(from, target)) return;
+  logChange('add-edge', `Added link "${from}" -> "${target}"`);
+  pushUndoCheckpoint(`Added link "${from}" -> "${target}"`);
+  refreshNodeVisual(from);
+  refreshNodeVisual(target);
+  rebuildEdgeVisuals();
+  updateStats();
+  if (selected) selectNode(selected); // keep the detail panel's cause/effect lists current
+  showImportStatus(`Added link "${from}" -> "${target}". Click its badge to set + or -.`);
+}
+
+window.addEventListener('pointermove', (ev) => {
+  if (!drawLink || ev.pointerId !== drawLink.pointerId) return;
+  drawLink.moved = true;
+  updateLinkDraft(pointerToDiagram(ev));
+});
+window.addEventListener('pointerup', (ev) => {
+  if (drawLink && ev.pointerId === drawLink.pointerId) endLinkDraw(true);
+});
+window.addEventListener('pointercancel', (ev) => {
+  if (drawLink && ev.pointerId === drawLink.pointerId) endLinkDraw(false);
+});
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && drawLink) endLinkDraw(false);
 });
 
 // ---- drag an edge to bend it - grabbing anywhere along its (wide,
