@@ -1336,8 +1336,8 @@ function renderLoopList() {
         ? new Map(edgeVisuals.map(e => [e, loopColorsForEdge(e, exportLoops)]).filter(([, c]) => c.length))
         : null;
       const filename = exportLoops.length > 1
-        ? `cld-loops-${exportLoops.map(l => slugForFilename(l.name)).join('-')}.png`
-        : `cld-loop-${slugForFilename(loop.name)}.png`;
+        ? `${fileBase}-loops-${exportLoops.map(l => slugForFilename(l.name)).join('-')}.png`
+        : `${fileBase}-loop-${slugForFilename(loop.name)}.png`;
       openPngExport(() => buildExportSvg({
         nodeIds,
         edgeFilter: (entry) => exportLoops.some(l => edgeInLoop(l, entry)),
@@ -2467,27 +2467,76 @@ const exportTextarea = document.getElementById('export-textarea');
 const exportCopyBtn = document.getElementById('export-copy');
 
 // ---- save dialog: one Save button, three formats ----
+// ---- file names: one base name for everything saved from this diagram -
+// the uploaded file's name, else this page's own (a saved web page reopened
+// later), else "cld-diagram" - editable in the Save and PNG dialogs ----
+let fileBase = (() => {
+  try {
+    const m = /([^/]+)\.html?$/i.exec(decodeURIComponent(location.pathname));
+    if (m && !/^cl-diy$/i.test(m[1])) return m[1];
+  } catch (e) { /* an odd URL - keep the default */ }
+  return 'cld-diagram';
+})();
+function cleanFileBase(s) {
+  const base = (s || '').trim().replace(/\.(html?|json|xmile|csv|png)$/i, '').replace(/[\\/:*?"<>|]+/g, '-').trim();
+  return base || 'cld-diagram';
+}
+
+// Saves blob through the browser's own "Save As" dialog (choose the name and
+// folder) where the File System Access API exists - Chrome and Edge. Returns
+// { status: 'saved', name } | { status: 'cancelled' } | { status: 'unsupported' };
+// on 'unsupported' (Safari, Firefox, or a sandboxed frame that refuses it)
+// the caller falls back to a plain download under the same name.
+async function saveWithPicker(blob, filename, mime) {
+  if (typeof window.showSaveFilePicker !== 'function') return { status: 'unsupported' };
+  const ext = (/\.[^.]+$/.exec(filename) || [''])[0];
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: filename,
+      types: ext ? [{ description: ext.slice(1).toUpperCase() + ' file', accept: { [mime]: [ext] } }] : undefined,
+    });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return { status: 'saved', name: handle.name };
+  } catch (err) {
+    return err && err.name === 'AbortError' ? { status: 'cancelled' } : { status: 'unsupported' };
+  }
+}
+
 const saveModal = document.getElementById('save-modal');
-document.getElementById('save-btn').addEventListener('click', () => { saveModal.style.display = 'flex'; });
+const saveNameInput = document.getElementById('save-name');
+document.getElementById('save-btn').addEventListener('click', () => {
+  saveNameInput.value = fileBase;
+  saveModal.style.display = 'flex';
+  saveNameInput.focus();
+  saveNameInput.select();
+});
+// the typed name, remembered for the next save
+function takeSaveName() {
+  fileBase = cleanFileBase(saveNameInput.value);
+  return fileBase;
+}
 function closeSaveModal() { saveModal.style.display = 'none'; }
 document.getElementById('save-close').addEventListener('click', closeSaveModal);
 saveModal.addEventListener('click', (e) => { if (e.target === saveModal) closeSaveModal(); });
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSaveModal(); });
 document.getElementById('save-json').addEventListener('click', () => {
   closeSaveModal();
-  exportText(JSON.stringify(exportPayload(), null, 2), 'cld-edited.json', 'application/json', 'Edited graph JSON');
+  exportText(JSON.stringify(exportPayload(), null, 2), takeSaveName() + '.json', 'application/json', 'Edited graph JSON');
 });
 document.getElementById('save-html').addEventListener('click', () => {
   closeSaveModal();
-  exportText(buildSavedPage(), 'cld-diagram.html', 'text/html', 'Web page (save as a .html file)');
+  exportText(buildSavedPage(), takeSaveName() + '.html', 'text/html', 'Web page (save as a .html file)');
 });
 document.getElementById('save-csv').addEventListener('click', () => {
   closeSaveModal();
+  takeSaveName();
   exportChangeLogCsv();
 });
 document.getElementById('save-xmile').addEventListener('click', () => {
   closeSaveModal();
-  exportText(buildXmile(), 'cld-diagram.xmile', 'application/xml', 'Vensim XMILE');
+  exportText(buildXmile(), takeSaveName() + '.xmile', 'application/xml', 'Vensim XMILE');
 });
 
 // a copy of this page with the current diagram baked in as its DATA - the
@@ -2585,18 +2634,26 @@ function exportChangeLogCsv() {
   const rows = [['step', 'type', 'action', 'comment']];
   changeLog.slice().reverse().forEach((e, i) => rows.push([String(i + 1), e.type, e.text, e.comment || '']));
   const csv = rows.map(r => r.map(cell).join(',')).join('\r\n') + '\r\n';
-  exportText(csv, 'cld-change-log.csv', 'text/csv', 'Change log CSV', '\uFEFF'); // BOM so Excel reads it as UTF-8
+  exportText(csv, fileBase + '-change-log.csv', 'text/csv', 'Change log CSV', '\uFEFF'); // BOM so Excel reads it as UTF-8
 }
 document.getElementById('export-log-btn').addEventListener('click', exportChangeLogCsv);
 
 // best-effort real download of text, plus the guaranteed fallback: the same
 // text, pre-selected, in a copyable box. bom (optional) is prepended to the
 // downloaded file only, never the copyable text.
-function exportText(text, filename, mime, heading, bom) {
+async function exportText(text, filename, mime, heading, bom) {
+  const blob = new Blob([(bom || '') + text], { type: mime });
+  // Chrome/Edge: the real "Save As" dialog, and nothing else to do after it
+  const picked = await saveWithPicker(blob, filename, mime);
+  if (picked.status === 'saved') {
+    if (/\.(html?|json|xmile)$/i.test(picked.name)) fileBase = cleanFileBase(picked.name);
+    showImportStatus(`Saved ${picked.name}.`);
+    return;
+  }
+  if (picked.status === 'cancelled') return;
   // artifact pages are sandboxed and the download can be silently blocked,
   // so it's a bonus, never the only path to the data
   try {
-    const blob = new Blob([(bom || '') + text], { type: mime });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -2925,7 +2982,10 @@ function exportSvgToPngBlob(svgEl, background) {
 
 // a real download attempt - if the page's sandbox blocks it, the export
 // dialog's preview image stays open to right-click/long-press and save
-function downloadPng(blob, filename) {
+async function downloadPng(blob, filename) {
+  const picked = await saveWithPicker(blob, filename, 'image/png');
+  if (picked.status === 'saved') { showImportStatus(`Saved ${picked.name}.`); return; }
+  if (picked.status === 'cancelled') return;
   try {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -2959,6 +3019,7 @@ const pngExportDownloadBtn = document.getElementById('png-export-download');
 // so it must read the diagram fresh rather than reuse one SVG
 function openPngExport(build, filename) {
   pngExportPending = { build, filename, blob: null };
+  document.getElementById('png-name').value = filename.replace(/\.png$/i, '');
   syncPngOptionButtons();
   pngExportModal.style.display = 'flex';
   renderPngPreview();
@@ -3037,7 +3098,7 @@ pngExportDownloadBtn.addEventListener('click', () => {
   if (!pngExportPending || !pngExportPending.blob) return;
   // the dialog stays open afterward - a sandbox-blocked download fails
   // silently, so the preview has to remain available to save by hand
-  downloadPng(pngExportPending.blob, pngExportPending.filename);
+  downloadPng(pngExportPending.blob, cleanFileBase(document.getElementById('png-name').value) + '.png');
 });
 
 function slugForFilename(name) {
@@ -3054,7 +3115,7 @@ document.getElementById('export-png-btn').addEventListener('click', () => {
     openPngExport(() => buildExportSvg({
       nodeIds: [...new Set([id, ...n.in, ...n.out])],
       edgeFilter: (e) => e.s === id || e.t === id,
-    }), `cld-${slugForFilename(id)}-connections.png`);
+    }), `${fileBase}-${slugForFilename(id)}-connections.png`);
     return;
   }
   openPngExport(() => {
@@ -3064,7 +3125,7 @@ document.getElementById('export-png-btn').addEventListener('click', () => {
       edgeFilter: () => true,
       tintOverrides,
     });
-  }, 'cld-diagram.png');
+  }, `${fileBase}.png`);
 });
 
 document.getElementById('png-export-close').addEventListener('click', closePngExport);
@@ -3327,6 +3388,7 @@ document.getElementById('import-file-input').addEventListener('change', (e) => {
   const file = e.target.files && e.target.files[0];
   e.target.value = ''; // allow re-selecting the same filename later
   if (!file) return;
+  fileBase = cleanFileBase(file.name); // saving later defaults to the same name
 
   const reader = new FileReader();
   reader.onload = () => {

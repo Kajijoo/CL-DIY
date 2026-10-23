@@ -817,6 +817,7 @@ input[type="search"]:focus {
 .link-draft { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; fill: none; pointer-events: none; }
 .node-dot.link-target { stroke: var(--accent); stroke-width: 3; }
 #stage.link-mode .node-dot { cursor: crosshair; }
+.save-name-row { margin-bottom: 12px; }
 .png-ink-grid { grid-template-columns: 1fr 1fr 1fr; }
 .png-ink-custom { display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
 .png-ink-custom input[type="color"] { width: 18px; height: 18px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: none; cursor: pointer; }

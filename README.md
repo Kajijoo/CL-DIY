@@ -34,10 +34,13 @@ Everything happens in your browser. Nothing is uploaded anywhere.
   prompt or the button; you can also comment on any entry in the log later.
   The change log, with its comments, downloads as a CSV file.
 - **Import and export:**
-  - One **Save** button, three formats: a web page (`.html`, the editor
+  - One **Save** button, four formats: a web page (`.html`, the editor
     with your diagram inside, ready to open and keep editing), JSON
     (positions, subsystems, loops and the change log included; upload it
-    again later) or Vensim XMILE (variables and links only).
+    again later), Vensim XMILE (variables and links only) or the change
+    log as CSV.
+    You choose the file name; in Chrome and Edge you also choose the
+    folder (other browsers save to your Downloads folder).
   - Upload a Vensim `.xmile` file directly.
   - Export the whole diagram, individual loops, or one variable with its
     direct causes and effects (select it first) as a PNG with a white or
