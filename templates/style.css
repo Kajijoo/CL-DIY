@@ -814,6 +814,12 @@ input[type="search"]:focus {
   box-shadow: var(--shadow);
 }
 .png-option-row { display: flex; flex-direction: column; gap: 4px; }
+.png-ink-grid { grid-template-columns: 1fr 1fr 1fr; }
+.png-ink-custom { display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+.png-ink-custom input[type="color"] { width: 18px; height: 18px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: none; cursor: pointer; }
+.png-ink-custom input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.png-ink-custom input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
+.png-ink-custom input[type="color"]::-moz-color-swatch { border: none; border-radius: 50%; }
 .png-option-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
 .export-textarea {
   width: 100%;

@@ -2624,7 +2624,11 @@ function buildExportSvgInner({ nodeIds, edgeFilter, tintColor, tintOverrides }) 
   nodeIds.forEach(id => {
     const nEl = nodeEls.get(id), lEl = labelEls.get(id);
     if (nEl) nodeLayerOut.appendChild(cloneWithBakedStyle(nEl));
-    if (lEl) labelLayerOut.appendChild(cloneWithBakedStyle(lEl));
+    if (lEl) {
+      const label = cloneWithBakedStyle(lEl);
+      if (exportNodeInk !== NODE_INK_DEFAULT) [label, ...label.querySelectorAll('*')].forEach(el => el.style.setProperty('fill', exportNodeInk));
+      labelLayerOut.appendChild(label);
+    }
   });
   out.appendChild(nodeLayerOut);
   out.appendChild(labelLayerOut);
@@ -2637,15 +2641,12 @@ function buildExportSvgInner({ nodeIds, edgeFilter, tintColor, tintOverrides }) 
 // the subsystem color key, in rows below the diagram: one swatch + name per
 // subsystem that actually appears among nodeIds (a single-loop export only
 // lists the colors it uses). Grows the export's viewBox to make room.
-const LEGEND_INK_ON_WHITE = '#20241d'; // --ink's light-theme value: legible on a white PNG even when the page is dark
 function appendSubsystemLegend(out, vb, nodeIds) {
   const used = new Set(nodeIds.map(id => byId.get(id)).filter(Boolean).map(n => n.level));
   const items = levels.filter(l => used.has(l.level));
   if (!items.length) return;
   const FONT_PX = 11, SWATCH_W = 14, SWATCH_H = 10, GAP = 6, ITEM_GAP = 22, ROW_H = 22, PAD = 36;
-  const ink = exportBackground === 'transparent'
-    ? getComputedStyle(document.documentElement).getPropertyValue('--ink').trim()
-    : LEGEND_INK_ON_WHITE;
+  const ink = exportLegendInk;
   labelMeasureCtx.font = `600 ${FONT_PX}px 'Public Sans', sans-serif`;
 
   const left = vb.x + PAD, maxRight = vb.x + vb.w - PAD;
@@ -2779,6 +2780,8 @@ function downloadPng(blob, filename) {
 let exportShowPolarity = true;  // whether exports include the +/- badges (read by buildExportSvgInner)
 let exportBackground = 'white'; // 'white' or 'transparent'
 let exportShowLegend = true;    // whether exports include the subsystem color key
+const NODE_INK_DEFAULT = '#ffffff', LEGEND_INK_DEFAULT = '#20241d'; // white names in the boxes; --ink's light-theme value
+let exportNodeInk = NODE_INK_DEFAULT, exportLegendInk = LEGEND_INK_DEFAULT;
 let pngExportPending = null;    // { build, filename, blob } for the dialog currently open
 let pngPreviewSeq = 0;          // drops a stale preview if the options change mid-render
 
@@ -2820,6 +2823,14 @@ function syncPngOptionButtons() {
   pngExportModal.querySelectorAll('[data-png-legend]').forEach(b => {
     b.dataset.active = (b.dataset.pngLegend === '1') === exportShowLegend ? '1' : '0';
   });
+  // Default is active while neither text color has been changed; each
+  // picker button is active once its own color differs from the default
+  const nodeChanged = exportNodeInk !== NODE_INK_DEFAULT, legendChanged = exportLegendInk !== LEGEND_INK_DEFAULT;
+  pngExportModal.querySelector('[data-png-ink-default]').dataset.active = nodeChanged || legendChanged ? '0' : '1';
+  pngExportModal.querySelector('[data-png-ink-node]').dataset.active = nodeChanged ? '1' : '0';
+  pngExportModal.querySelector('[data-png-ink-legend]').dataset.active = legendChanged ? '1' : '0';
+  pngInkNode.value = exportNodeInk;
+  pngInkLegend.value = exportLegendInk;
 }
 
 pngExportModal.querySelectorAll('[data-png-polarity]').forEach(b => b.addEventListener('click', () => {
@@ -2837,6 +2848,17 @@ pngExportModal.querySelectorAll('[data-png-legend]').forEach(b => b.addEventList
   syncPngOptionButtons();
   renderPngPreview();
 }));
+const pngInkNode = document.getElementById('png-ink-node');
+const pngInkLegend = document.getElementById('png-ink-legend');
+function setTextInks(node, legend) {
+  exportNodeInk = node.toLowerCase();
+  exportLegendInk = legend.toLowerCase();
+  syncPngOptionButtons();
+  renderPngPreview();
+}
+pngExportModal.querySelector('[data-png-ink-default]').addEventListener('click', () => setTextInks(NODE_INK_DEFAULT, LEGEND_INK_DEFAULT));
+pngInkNode.addEventListener('input', () => setTextInks(pngInkNode.value, exportLegendInk));
+pngInkLegend.addEventListener('input', () => setTextInks(exportNodeInk, pngInkLegend.value));
 
 function closePngExport() {
   pngExportPending = null;
