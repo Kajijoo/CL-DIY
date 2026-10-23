@@ -39,7 +39,8 @@ Everything happens in your browser. Nothing is uploaded anywhere.
     again later) or Vensim XMILE (variables and links only).
   - Upload a Vensim `.xmile` file directly.
   - Export the whole diagram, or individual loops, as a PNG with a white or
-    transparent background, with or without the +/- signs.
+    transparent background, with or without the +/- signs and a
+    legend of the subsystem colours.
 
 ## Building the page yourself
 

@@ -1000,6 +1000,13 @@ input[type="search"]:focus {
         </div>
       </div>
       <div class="png-option-row">
+        <span class="png-option-label">Legend</span>
+        <div class="loop-type-grid">
+          <button class="loop-type-toggle" type="button" data-png-legend="1">Show legend</button>
+          <button class="loop-type-toggle" type="button" data-png-legend="0">Hide legend</button>
+        </div>
+      </div>
+      <div class="png-option-row">
         <span class="png-option-label">Background</span>
         <div class="loop-type-grid">
           <button class="loop-type-toggle" type="button" data-png-bg="white">White</button>
@@ -3759,7 +3766,50 @@ function buildExportSvgInner({ nodeIds, edgeFilter, tintColor, tintOverrides }) 
   out.appendChild(labelLayerOut);
   out.appendChild(polarityLayerOut);
 
+  if (exportShowLegend) appendSubsystemLegend(out, vb, nodeIds);
   return out;
+}
+
+// the subsystem color key, in rows below the diagram: one swatch + name per
+// subsystem that actually appears among nodeIds (a single-loop export only
+// lists the colors it uses). Grows the export's viewBox to make room.
+const LEGEND_INK_ON_WHITE = '#20241d'; // --ink's light-theme value: legible on a white PNG even when the page is dark
+function appendSubsystemLegend(out, vb, nodeIds) {
+  const used = new Set(nodeIds.map(id => byId.get(id)).filter(Boolean).map(n => n.level));
+  const items = levels.filter(l => used.has(l.level));
+  if (!items.length) return;
+  const FONT_PX = 11, SWATCH_W = 14, SWATCH_H = 10, GAP = 6, ITEM_GAP = 22, ROW_H = 22, PAD = 36;
+  const ink = exportBackground === 'transparent'
+    ? getComputedStyle(document.documentElement).getPropertyValue('--ink').trim()
+    : LEGEND_INK_ON_WHITE;
+  labelMeasureCtx.font = `600 ${FONT_PX}px 'Public Sans', sans-serif`;
+
+  const left = vb.x + PAD, maxRight = vb.x + vb.w - PAD;
+  const top = vb.y + vb.h; // just below the diagram's own bottom padding
+  const g = document.createElementNS(svgNS, 'g');
+  let x = left, row = 0;
+  items.forEach(l => {
+    const w = SWATCH_W + GAP + labelMeasureCtx.measureText(l.label).width;
+    if (x > left && x + w > maxRight) { row++; x = left; }
+    const cy = top + row * ROW_H + ROW_H / 2;
+    const rect = document.createElementNS(svgNS, 'rect');
+    rect.setAttribute('x', x); rect.setAttribute('y', cy - SWATCH_H / 2);
+    rect.setAttribute('width', SWATCH_W); rect.setAttribute('height', SWATCH_H);
+    rect.setAttribute('rx', 2.5); rect.setAttribute('fill', l.color);
+    const text = document.createElementNS(svgNS, 'text');
+    text.setAttribute('x', x + SWATCH_W + GAP); text.setAttribute('y', cy + FONT_PX * 0.35);
+    text.setAttribute('fill', ink);
+    text.setAttribute('font-family', "'Public Sans', sans-serif");
+    text.setAttribute('font-size', FONT_PX); text.setAttribute('font-weight', 600);
+    text.textContent = l.label;
+    g.appendChild(rect); g.appendChild(text);
+    x += w + ITEM_GAP;
+  });
+  out.appendChild(g);
+
+  vb.h += (row + 1) * ROW_H + PAD * 0.6;
+  out.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  out.setAttribute('height', Math.round(vb.h));
 }
 
 function makeArrowMarker(id, color) {
@@ -3864,6 +3914,7 @@ function downloadPng(blob, filename) {
 // The two options persist for the rest of the session. ----
 let exportShowPolarity = true;  // whether exports include the +/- badges (read by buildExportSvgInner)
 let exportBackground = 'white'; // 'white' or 'transparent'
+let exportShowLegend = true;    // whether exports include the subsystem color key
 let pngExportPending = null;    // { build, filename, blob } for the dialog currently open
 let pngPreviewSeq = 0;          // drops a stale preview if the options change mid-render
 
@@ -3902,6 +3953,9 @@ function syncPngOptionButtons() {
   pngExportModal.querySelectorAll('[data-png-bg]').forEach(b => {
     b.dataset.active = b.dataset.pngBg === exportBackground ? '1' : '0';
   });
+  pngExportModal.querySelectorAll('[data-png-legend]').forEach(b => {
+    b.dataset.active = (b.dataset.pngLegend === '1') === exportShowLegend ? '1' : '0';
+  });
 }
 
 pngExportModal.querySelectorAll('[data-png-polarity]').forEach(b => b.addEventListener('click', () => {
@@ -3911,6 +3965,11 @@ pngExportModal.querySelectorAll('[data-png-polarity]').forEach(b => b.addEventLi
 }));
 pngExportModal.querySelectorAll('[data-png-bg]').forEach(b => b.addEventListener('click', () => {
   exportBackground = b.dataset.pngBg;
+  syncPngOptionButtons();
+  renderPngPreview();
+}));
+pngExportModal.querySelectorAll('[data-png-legend]').forEach(b => b.addEventListener('click', () => {
+  exportShowLegend = b.dataset.pngLegend === '1';
   syncPngOptionButtons();
   renderPngPreview();
 }));
