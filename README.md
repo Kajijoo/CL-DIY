@@ -39,7 +39,8 @@ Everything happens in your browser. Nothing is uploaded anywhere.
     (positions, subsystems, loops and the change log included; upload it
     again later) or Vensim XMILE (variables and links only).
   - Upload a Vensim `.xmile` file directly.
-  - Export the whole diagram, or individual loops, as a PNG with a white or
+  - Export the whole diagram, individual loops, or one variable with its
+    direct causes and effects (select it first) as a PNG with a white or
     transparent background, with or without the +/- signs and a
     legend of the subsystem colours; the colours of the variable names and
     the legend text can be changed.

@@ -1123,7 +1123,7 @@ input[type="search"]:focus {
       <button class="zoom-btn" id="free-toggle" data-active="0" aria-label="Free-arrange mode" title="Free-arrange mode: freezes every node in place, freed from the layout springs, so you can drag anything without the rest chasing after it. On by default. Toggle off to resume the layout springs.">
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="7" r="3.4"/><path d="M10 10.4 L10 17.5"/></svg>
       </button>
-      <button class="zoom-btn" id="export-png-btn" aria-label="Export diagram as PNG" title="Export the whole diagram as a PNG image (includes the &quot;show all loops&quot; overlay if it's on)">
+      <button class="zoom-btn" id="export-png-btn" aria-label="Export diagram as PNG" title="Export as a PNG image: the whole diagram (with the &quot;show all loops&quot; overlay if it's on), or, with a variable selected, just that variable and its direct causes and effects">
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3" width="15" height="14" rx="1.6"/><circle cx="7" cy="7.5" r="1.6"/><path d="M17 12.5 L12.5 8.5 L4 16"/></svg>
       </button>
     </div>
@@ -3591,6 +3591,9 @@ wireEdgeAdder('add-in-input', 'add-in-results', 'in');
 wireEdgeAdder('add-out-input', 'add-out-results', 'out');
 
 stage.addEventListener('click', () => clearAll());
+// the zoom/export buttons sit on top of the canvas - using them (e.g. exporting
+// the selected variable's connections) shouldn't count as a click on empty canvas
+document.querySelector('.zoom-controls').addEventListener('click', (e) => e.stopPropagation());
 document.getElementById('clear-btn').addEventListener('click', clearSelection);
 
 // ---- rename (implemented as mergeNodes([id], newName, level) - a merge of one) ----
@@ -4206,7 +4209,19 @@ function slugForFilename(name) {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'diagram';
 }
 
+// context-aware, like the per-loop PNG button: with a variable selected
+// (spotlit), this exports just that variable, its direct causes and effects,
+// and the links between it and them - what the spotlight shows; otherwise
+// the whole diagram
 document.getElementById('export-png-btn').addEventListener('click', () => {
+  if (selected && byId.has(selected)) {
+    const id = selected, n = byId.get(id);
+    openPngExport(() => buildExportSvg({
+      nodeIds: [...new Set([id, ...n.in, ...n.out])],
+      edgeFilter: (e) => e.s === id || e.t === id,
+    }), `cld-${slugForFilename(id)}-connections.png`);
+    return;
+  }
   openPngExport(() => {
     const tintOverrides = showAllLoops ? new Map(edgeVisuals.map(e => [e, loopColorsForEdge(e)]).filter(([, c]) => c.length)) : null;
     return buildExportSvg({

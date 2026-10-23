@@ -2426,6 +2426,9 @@ wireEdgeAdder('add-in-input', 'add-in-results', 'in');
 wireEdgeAdder('add-out-input', 'add-out-results', 'out');
 
 stage.addEventListener('click', () => clearAll());
+// the zoom/export buttons sit on top of the canvas - using them (e.g. exporting
+// the selected variable's connections) shouldn't count as a click on empty canvas
+document.querySelector('.zoom-controls').addEventListener('click', (e) => e.stopPropagation());
 document.getElementById('clear-btn').addEventListener('click', clearSelection);
 
 // ---- rename (implemented as mergeNodes([id], newName, level) - a merge of one) ----
@@ -3041,7 +3044,19 @@ function slugForFilename(name) {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'diagram';
 }
 
+// context-aware, like the per-loop PNG button: with a variable selected
+// (spotlit), this exports just that variable, its direct causes and effects,
+// and the links between it and them - what the spotlight shows; otherwise
+// the whole diagram
 document.getElementById('export-png-btn').addEventListener('click', () => {
+  if (selected && byId.has(selected)) {
+    const id = selected, n = byId.get(id);
+    openPngExport(() => buildExportSvg({
+      nodeIds: [...new Set([id, ...n.in, ...n.out])],
+      edgeFilter: (e) => e.s === id || e.t === id,
+    }), `cld-${slugForFilename(id)}-connections.png`);
+    return;
+  }
   openPngExport(() => {
     const tintOverrides = showAllLoops ? new Map(edgeVisuals.map(e => [e, loopColorsForEdge(e)]).filter(([, c]) => c.length)) : null;
     return buildExportSvg({
