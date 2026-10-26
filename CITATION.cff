@@ -9,8 +9,8 @@ abstract: >-
   into subsystems, trace and label feedback loops, and comment on each change,
   and can save their work as HTML, JSON or Vensim XMILE.
 type: software
-version: 1.0.0
-date-released: 2026-10-20
+version: 1.1.0
+date-released: 2026-10-26
 license: Apache-2.0
 repository-code: "https://github.com/Kajijoo/CL-DIY"
 doi: 10.5281/zenodo.23505749
