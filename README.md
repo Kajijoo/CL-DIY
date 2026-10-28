@@ -7,6 +7,13 @@ as a single, self-contained HTML page: no server, no install, no account.
 Open the file in a browser, build or import a diagram, and export it as an
 image or a JSON file.
 
+If you use CL-DIY in your work, please cite the accompanying paper:
+
+> Kaan, J., Ulug, C., Thompson, K., Wagemakers, A., & Moore, S. (2026).
+> *Causal Loop? Do It Yourself! (CL-DIY): An open-source and browser-based
+> editor to share causal loop diagrams.* Zenodo.
+> https://doi.org/10.5281/zenodo.23733354
+
 ## Quick start
 
 1. Download [`CL-DIY.html`](CL-DIY.html).

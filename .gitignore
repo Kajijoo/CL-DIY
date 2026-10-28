@@ -35,3 +35,5 @@ paper/*.preprint.*
 .DS_Store
 .vscode/
 .idea/
+
+/CLD2ABM
