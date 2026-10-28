@@ -2473,7 +2473,9 @@ const exportCopyBtn = document.getElementById('export-copy');
 let fileBase = (() => {
   try {
     const m = /([^/]+)\.html?$/i.exec(decodeURIComponent(location.pathname));
-    if (m && !/^cl-diy$/i.test(m[1])) return m[1];
+    // the blank editor itself (CL-DIY.html, or a versioned copy like
+    // CL-DIY-1.1.1.html) isn't a diagram's name
+    if (m && !/^cl-diy([-_ .]?v?\d+(\.\d+)*)?$/i.test(m[1])) return m[1];
   } catch (e) { /* an odd URL - keep the default */ }
   return 'cld-diagram';
 })();
