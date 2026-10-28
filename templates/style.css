@@ -197,6 +197,17 @@ h1 span.h1-ink { color: var(--ink); }
 }
 .blurb strong { color: var(--ink); font-weight: 600; }
 
+/* sits at the bottom of the right sidebar (pushed down by the flex column) */
+.cite-note {
+  margin: auto 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.cite-note a { color: var(--accent); overflow-wrap: anywhere; }
+
 .aside-note {
   font-size: 0.74rem;
   line-height: 1.5;

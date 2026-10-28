@@ -95,8 +95,12 @@ asks whether to drop the duplicate.
 
 ## Citing CL-DIY
 
-If you use CL-DIY in your work, please cite the accompanying paper
-(preprint link coming soon).
+If you use CL-DIY in your work, please cite the accompanying paper:
+
+> Kaan, J., Ulug, C., Thompson, K., Wagemakers, A., & Moore, S. (2026).
+> *Causal Loop? Do It Yourself! (CL-DIY): An open-source and browser-based
+> editor to share causal loop diagrams.* Zenodo.
+> https://doi.org/10.5281/zenodo.23733354
 
 Every release of the software is archived on Zenodo:
 [10.5281/zenodo.23505749](https://doi.org/10.5281/zenodo.23505749) (this DOI
