@@ -2,6 +2,7 @@
   "title": "CL-DIY: Causal Loop? Do It Yourself!",
   "upload_type": "software",
   "description": "CL-DIY is an open-source, browser-based editor for building, exploring and refining causal loop diagrams. A diagram lives in a single self-contained HTML file that anyone can open in a web browser, with no installation, no account and no server. Users can edit variables and links, group variables into subsystems, trace and label feedback loops, and comment on each change, and can save their work as HTML, JSON or Vensim XMILE.",
+  "notes": "If you use CL-DIY, please cite the accompanying paper: Kaan, J., Ulug, C., Thompson, K., Wagemakers, A., & Moore, S. (2026). Causal Loop? Do It Yourself! (CL-DIY): An open-source and browser-based editor to share causal loop diagrams. Zenodo. https://doi.org/10.5281/zenodo.23733354",
   "creators": [
     {
       "name": "Kaan, Jiri",
