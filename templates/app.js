@@ -1273,6 +1273,33 @@ window.addEventListener('keydown', (e) => {
   undo();
 });
 
+// inline rename from the loop list, same feel as renaming a subsystem:
+// Enter or clicking away saves, Esc cancels, an empty name keeps the old one
+function startLoopRename(loop, nameEl) {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'loop-name-input mini-input';
+  input.value = loop.name;
+  nameEl.replaceWith(input);
+  input.focus();
+  input.select();
+  input.addEventListener('click', (ev) => ev.stopPropagation());
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') input.blur();
+    if (ev.key === 'Escape') { input.value = loop.name; input.blur(); }
+  });
+  input.addEventListener('blur', () => {
+    const newName = input.value.trim() || loop.name;
+    const oldName = loop.name;
+    if (newName !== oldName) {
+      loop.name = newName;
+      logChange('loop-edit', `Renamed loop "${oldName}" -> "${newName}"`);
+      pushUndoCheckpoint(`Renamed loop "${oldName}" -> "${newName}"`);
+    }
+    renderLoopList();
+  }, { once: true });
+}
+
 // live while the picker is open; logged once it closes (the 'change' event)
 function setLoopColor(loop, color, row) {
   loop.color = color.toLowerCase();
@@ -1316,6 +1343,9 @@ function renderLoopList() {
     const name = document.createElement('div');
     name.className = 'loop-row-name';
     name.textContent = loop.name;
+    name.title = 'Click to rename this loop';
+    // like a subsystem's name: clicking the name renames, clicking the rest of the row (un)highlights
+    name.addEventListener('click', (ev) => { ev.stopPropagation(); startLoopRename(loop, name); });
     const meta = document.createElement('div');
     meta.className = 'loop-row-meta';
     meta.textContent = `${loop.nodes.length} node(s)`;

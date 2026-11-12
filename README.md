@@ -33,7 +33,8 @@ Everything happens in your browser. Nothing is uploaded anywhere.
 - **Feedback loops:** trace a loop by clicking its variables in order, save
   it as reinforcing (R) or balancing (B), and highlight one or several
   loops at once. CL-DIY checks that every saved loop is a real cycle.
-  Click a loop's colour dot to give it a different colour.
+  Click a loop's colour dot to give it a different colour, or its name to
+  rename it.
 - **Layout:** drag variables anywhere. Nodes stay where you put them; turn
   on the layout springs when you want the diagram to tidy itself.
 - **Undo, search and a change log** of every edit. "Comment on edits" is
