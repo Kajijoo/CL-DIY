@@ -214,7 +214,11 @@ def build_payload_from_json(json_path: str) -> dict:
             count = len(loop_nodes)
             ok = all((loop_nodes[i], loop_nodes[(i + 1) % count]) in edge_pairs for i in range(count))
         if ok:
-            loops_payload.append({"name": name, "type": loop_type, "nodes": loop_nodes})
+            loop = {"name": name, "type": loop_type, "nodes": loop_nodes}
+            color = rl.get("color")
+            if isinstance(color, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+                loop["color"] = color  # a user-picked color; palette ones are reassigned in the browser
+            loops_payload.append(loop)
         else:
             loops_dropped += 1
 

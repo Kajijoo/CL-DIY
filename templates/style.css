@@ -638,7 +638,21 @@ input[type="search"]:focus {
 }
 .loop-row:hover { border-color: var(--ink-soft); }
 .loop-row.is-active { border-color: var(--loop-color, var(--accent)); border-width: 2px; }
-.loop-row .swatch { background: var(--loop-color, var(--accent)); flex: none; }
+.loop-color-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border: none;
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  flex: none;
+}
+.loop-color-input::-webkit-color-swatch-wrapper { padding: 0; }
+.loop-color-input::-webkit-color-swatch { border: none; border-radius: 50%; }
+.loop-color-input::-moz-color-swatch { border: none; border-radius: 50%; }
 .loop-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .loop-row-name { font-size: 0.82rem; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
 .loop-row-meta { font-size: 0.7rem; color: var(--ink-soft); }

@@ -95,6 +95,9 @@ let undoStack = [];
 // the full 8-hue standard categorical palette - see the --loop-N comment
 // near :root for how 6/7/8 (blue/orange/green) avoid colliding with those
 // hues' other meanings elsewhere on this canvas
+// a loop's color is either one of these theme-aware palette entries (the
+// automatic choice) or a custom '#rrggbb' the user picked from its row
+const isCustomLoopColor = (c) => typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c);
 const LOOP_COLORS = ['var(--loop-1)', 'var(--loop-2)', 'var(--loop-3)', 'var(--loop-4)', 'var(--loop-5)', 'var(--loop-6)', 'var(--loop-7)', 'var(--loop-8)'];
 
 // one entry per *user-intent* edit (delete/merge/rename/manual link add or
@@ -727,9 +730,9 @@ function restoreLoopsAndLogFrom(source) {
       name: rl.name,
       type: rl.type,
       nodes: rl.nodes.slice(),
-      color: LOOP_COLORS[loopColorSeq % LOOP_COLORS.length],
+      color: isCustomLoopColor(rl.color) ? rl.color : LOOP_COLORS[loopColorSeq % LOOP_COLORS.length],
     });
-    loopColorSeq++;
+    loopColorSeq++; // advances either way, so the automatic colors of the other loops don't shift
   });
   renderLoopList();
 
@@ -1270,6 +1273,14 @@ window.addEventListener('keydown', (e) => {
   undo();
 });
 
+// live while the picker is open; logged once it closes (the 'change' event)
+function setLoopColor(loop, color, row) {
+  loop.color = color.toLowerCase();
+  row.style.setProperty('--loop-color', loop.color);
+  if (highlightedLoopIds.has(loop.id)) applySelectedLoopsTint();
+  if (showAllLoops) applyAllLoopsTint();
+}
+
 function renderLoopList() {
   if (showAllLoops) applyAllLoopsTint(); // loops just changed (add/delete/prune) - keep the overlay in sync
   const list = document.getElementById('loop-list');
@@ -1288,8 +1299,17 @@ function renderLoopList() {
     li.style.setProperty('--loop-color', loop.color);
     li.addEventListener('click', () => toggleLoopHighlight(loop.id));
 
-    const swatch = document.createElement('span');
-    swatch.className = 'swatch';
+    const swatch = document.createElement('input');
+    swatch.type = 'color';
+    swatch.className = 'loop-color-input';
+    swatch.value = resolveLoopColor(loop.color);
+    swatch.title = "Change this loop's color";
+    swatch.addEventListener('click', (ev) => ev.stopPropagation()); // picking a color isn't a click on the row
+    swatch.addEventListener('input', () => setLoopColor(loop, swatch.value, li));
+    swatch.addEventListener('change', () => {
+      logChange('loop-edit', `Recolored loop "${loop.name}"`);
+      pushUndoCheckpoint(`Recolored loop "${loop.name}"`);
+    });
 
     const main = document.createElement('div');
     main.className = 'loop-row-main';
@@ -2154,12 +2174,15 @@ function toggleLoopHighlight(id) {
   });
 }
 
-// extracts the N from a 'var(--loop-N)' string, to pick the matching
-// per-color lit arrowhead marker (#arrow-lit-N) - same regex idea as
-// resolveLoopColor() below, just for a marker id instead of a resolved color
-function loopColorIndex(varStr) {
-  const m = /--loop-(\d+)/.exec(varStr);
-  return m ? m[1] : '1';
+// the lit arrowhead marker for a loop color: a palette color ('var(--loop-N)')
+// has its own marker in the page (#arrow-lit-N); a custom '#rrggbb' gets one
+// made on first use and reused after that
+function litMarkerFor(color) {
+  const m = /--loop-(\d+)/.exec(color);
+  if (m) return `url(#arrow-lit-${m[1]})`;
+  const id = 'arrow-lit-c' + color.slice(1).toLowerCase();
+  if (!document.getElementById(id)) svg.querySelector('defs').appendChild(makeArrowMarker(id, color));
+  return `url(#${id})`;
 }
 
 function applySelectedLoopsTint() {
@@ -2185,7 +2208,7 @@ function applySelectedLoopsTint() {
     if (colors.length === 1) {
       entry.el.style.stroke = colors[0];
       entry.el.style.strokeWidth = '1.8';
-      const marker = `url(#arrow-lit-${loopColorIndex(colors[0])})`;
+      const marker = litMarkerFor(colors[0]);
       entry.el.setAttribute('marker-end', marker);
       if (entry.bidir) entry.el.setAttribute('marker-start', marker);
     } else {
@@ -2287,6 +2310,13 @@ function applyAllLoopsTint() {
       const tint = colors[0] || '';
       entry.el.style.stroke = tint;
       entry.el.style.strokeWidth = tint ? '1.8' : '';
+      // the arrowhead follows the link's loop color, as when loops are highlighted
+      const marker = tint ? litMarkerFor(tint) : 'url(#arrow)';
+      entry.el.setAttribute('marker-end', marker);
+      if (entry.bidir) entry.el.setAttribute('marker-start', marker);
+    } else {
+      entry.el.setAttribute('marker-end', 'url(#arrow)'); // shared link: the stripes carry the colors
+      if (entry.bidir) entry.el.setAttribute('marker-start', 'url(#arrow)');
     }
   });
 }
@@ -2620,7 +2650,8 @@ function exportPayload() {
       if (e.bend != null) o.bend = Math.round(e.bend * 10) / 10;
       return o;
     }),
-    loops: loops.map(l => ({ name: l.name, type: l.type, nodes: l.nodes })), // no color - reassigned fresh on import
+    // a custom color travels with the loop; a palette one is reassigned fresh on import
+    loops: loops.map(l => ({ name: l.name, type: l.type, nodes: l.nodes, ...(isCustomLoopColor(l.color) ? { color: l.color } : {}) })),
     levels: levels.map(l => ({ level: l.level, key: l.key, label: l.label, color: l.color })),
     // oldest first; a plain string unless the entry has a comment
     log: changeLog.slice().reverse().map(e => e.comment ? { text: e.text, comment: e.comment } : e.text),
@@ -2782,6 +2813,13 @@ function buildExportSvgInner({ nodeIds, edgeFilter, tintColor, tintOverrides }) 
   defs.appendChild(makeArrowMarker('exp-arrow', plainArrowColor));
   if (litArrowColor) defs.appendChild(makeArrowMarker('exp-arrow-lit', litArrowColor));
   out.appendChild(defs);
+  // one arrowhead per loop color used by a multi-loop export, made on demand,
+  // so a link tinted in its loop's color also ends in that color
+  const exportMarkerFor = (color) => {
+    const id = 'exp-arrow-' + color.replace(/[^a-zA-Z0-9]/g, '');
+    if (!defs.querySelector('#' + id)) defs.appendChild(makeArrowMarker(id, color));
+    return `url(#${id})`;
+  };
 
   const edgeLayerOut = document.createElementNS(svgNS, 'g');
   const polarityLayerOut = document.createElementNS(svgNS, 'g');
@@ -2804,10 +2842,11 @@ function buildExportSvgInner({ nodeIds, edgeFilter, tintColor, tintOverrides }) 
       clone.setAttribute('marker-end', 'url(#exp-arrow-lit)');
       if (entry.bidir) clone.setAttribute('marker-start', 'url(#exp-arrow-lit)');
     } else if (override && override.length === 1) {
-      clone.setAttribute('stroke', resolveLoopColor(override[0]));
+      const color = resolveLoopColor(override[0]);
+      clone.setAttribute('stroke', color);
       clone.setAttribute('stroke-width', '1.8');
-      clone.setAttribute('marker-end', 'url(#exp-arrow)');
-      if (entry.bidir) clone.setAttribute('marker-start', 'url(#exp-arrow)');
+      clone.setAttribute('marker-end', exportMarkerFor(color));
+      if (entry.bidir) clone.setAttribute('marker-start', exportMarkerFor(color));
     } else {
       // plain/neutral - either untinted, or (below) the base an edge shared
       // by 2+ loops sits under its own dashed color stripes
@@ -3372,7 +3411,8 @@ function importGraph(raw) {
     const allExist = loopNodes.length >= 2 && loopNodes.every(id => byIdLocal.has(id));
     const check = allExist ? validateLoopCycle(loopNodes, edges) : { ok: false };
     if (name && check.ok) {
-      importedLoops.push({ id: 'loop-' + (++loopIdSeq), name, type, nodes: loopNodes.slice(), color: LOOP_COLORS[loopColorSeq % LOOP_COLORS.length] });
+      const color = isCustomLoopColor(rl.color) ? rl.color : LOOP_COLORS[loopColorSeq % LOOP_COLORS.length];
+      importedLoops.push({ id: 'loop-' + (++loopIdSeq), name, type, nodes: loopNodes.slice(), color });
       loopColorSeq++;
     } else {
       loopsDropped++;
