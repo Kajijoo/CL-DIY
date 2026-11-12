@@ -70,7 +70,7 @@ let linkMode = false, drawLink = null; // "Draw links" mode, and the link-drag i
 // code below for what "pinned" actually does to a node
 let freeMode = false;
 // node ids pinned automatically by the *current* free-arrange session (not
-// pinned some other way, e.g. a saved loop's own pin button) - tracked so
+// pinned some other way, e.g. a single node pinned by hand) - tracked so
 // turning the mode back off can release exactly those, and only those
 let freeModeAutoPinned = new Set();
 
@@ -92,6 +92,7 @@ let highlightedLoopIds = new Set(); // multiple loops can be highlighted at once
 // addNodeMode/showAllLoops are: the initial-load block below seeds it
 // before this file's execution would otherwise reach its later definition.
 let undoStack = [];
+let redoStack = []; // edits taken back by undo, newest last - emptied by any new edit
 // the full 8-hue standard categorical palette - see the --loop-N comment
 // near :root for how 6/7/8 (blue/orange/green) avoid colliding with those
 // hues' other meanings elsewhere on this canvas
@@ -111,7 +112,7 @@ let changeLog = [];
 // from the change log itself.
 let commentMode = true;
 // entries that are bookkeeping, not an edit the user made - never prompted for
-const UNPROMPTED_LOG_TYPES = new Set(['history', 'import', 'undo']);
+const UNPROMPTED_LOG_TYPES = new Set(['history', 'import', 'undo', 'redo']);
 let pendingCommentEntry = null;
 
 function logChange(type, text, comment) {
@@ -233,7 +234,6 @@ document.getElementById('comment-toggle').addEventListener('click', () => setCom
 const X_ICON_SVG = '<svg class="icon-sm" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M1.5 1.5 L8.5 8.5 M8.5 1.5 L1.5 8.5"/></svg>';
 // same pin glyph as the free-arrange toggle above the canvas, reused at
 // per-loop-row scale
-const PIN_ICON_SVG = '<svg class="icon-sm" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="3.6" r="1.9"/><path d="M5 5.5 L5 9" /></svg>';
 // a small "picture" glyph for "export this loop as a PNG" - same inline-SVG
 // reasoning as the two icons above
 const PNG_ICON_SVG = '<svg class="icon-sm" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="0.8" y="0.8" width="8.4" height="8.4" rx="1.1"/><circle cx="3.4" cy="3.6" r="0.9"/><path d="M9 6.6 L6.4 4.2 L1.8 8.4"/></svg>';
@@ -1208,6 +1208,7 @@ function captureSnapshot() {
 
 function pushUndoCheckpoint(text) {
   undoStack.push({ snapshot: captureSnapshot(), text });
+  redoStack = []; // a new edit branches off - what was undone can't be redone any more
   updateUndoButton();
 }
 
@@ -1249,8 +1250,20 @@ function restoreSnapshot(snap) {
 function undo() {
   if (undoStack.length < 2) return;
   const entry = undoStack.pop();
+  redoStack.push(entry);
   restoreSnapshot(undoStack[undoStack.length - 1].snapshot);
   logChange('undo', entry.text ? `Undid: ${entry.text}` : 'Undid the last action');
+  updateUndoButton();
+}
+
+// re-applies the most recently undone edit: its own snapshot is the state
+// right after that edit, so it goes back on the undo stack as it was
+function redo() {
+  const entry = redoStack.pop();
+  if (!entry) return;
+  undoStack.push(entry);
+  restoreSnapshot(entry.snapshot);
+  logChange('redo', entry.text ? `Redid: ${entry.text}` : 'Redid the last action');
   updateUndoButton();
 }
 
@@ -1261,16 +1274,26 @@ function updateUndoButton() {
   const canUndo = undoStack.length >= 2 && !!(top && top.text);
   btn.disabled = !canUndo;
   btn.title = canUndo ? `Undo: ${top.text}` : 'Nothing to undo yet';
+  const redoBtn = document.getElementById('redo-btn');
+  const next = redoStack[redoStack.length - 1];
+  redoBtn.disabled = !next;
+  redoBtn.title = next ? `Redo: ${next.text}` : 'Nothing to redo';
 }
 
 document.getElementById('undo-btn').addEventListener('click', undo);
+document.getElementById('redo-btn').addEventListener('click', redo);
+// Cmd/Ctrl+Z undoes; Cmd/Ctrl+Shift+Z or Ctrl+Y redoes
 window.addEventListener('keydown', (e) => {
-  if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z' || e.shiftKey) return;
-  // don't hijack native undo while the user is typing in a text field
+  if (!(e.metaKey || e.ctrlKey)) return;
+  const key = e.key.toLowerCase();
+  const isUndo = key === 'z' && !e.shiftKey;
+  const isRedo = (key === 'z' && e.shiftKey) || (key === 'y' && !e.shiftKey);
+  if (!isUndo && !isRedo) return;
+  // don't hijack native undo/redo while the user is typing in a text field
   const tag = document.activeElement && document.activeElement.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
   e.preventDefault();
-  undo();
+  if (isUndo) undo(); else redo();
 });
 
 // inline rename from the loop list, same feel as renaming a subsystem:
@@ -1356,18 +1379,6 @@ function renderLoopList() {
     badge.className = 'loop-type-badge';
     badge.textContent = loop.type;
 
-    const loopNodes = loop.nodes.filter(id => byId.has(id));
-    const allPinned = loopNodes.length > 0 && loopNodes.every(id => byId.get(id).pinned);
-    const pin = document.createElement('button');
-    pin.className = 'loop-row-pin';
-    pin.dataset.active = allPinned ? '1' : '0';
-    pin.innerHTML = PIN_ICON_SVG;
-    pin.title = allPinned ? 'Unpin this loop\'s nodes' : 'Pin this loop\'s nodes in place, free of the layout springs';
-    pin.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      loopNodes.forEach(id => setPinned(id, !allPinned));
-    });
-
     const png = document.createElement('button');
     png.className = 'loop-row-png';
     png.innerHTML = PNG_ICON_SVG;
@@ -1405,7 +1416,6 @@ function renderLoopList() {
     li.appendChild(swatch);
     li.appendChild(main);
     li.appendChild(badge);
-    li.appendChild(pin);
     li.appendChild(png);
     li.appendChild(rm);
     list.appendChild(li);
@@ -2027,20 +2037,6 @@ window.addEventListener('pointerup', (ev) => {
   dragEdge = null;
 });
 
-document.getElementById('reset-layout').addEventListener('click', () => {
-  liveNodes.forEach(n => {
-    n.x = n.x0; n.y = n.y0; n.vx = 0; n.vy = 0;
-    if (n.pinned) {
-      n.pinned = false;
-      const el = nodeEls.get(n.id);
-      if (el) el.classList.remove('pinned');
-    }
-  });
-  edgeEls.forEach(e => { e.bend = null; });
-  edgeVisuals.forEach(entry => { entry.bend = null; });
-  applyPositions();
-});
-
 // ---- free-arrange mode: pin nodes so the layout springs leave them alone,
 // letting you pull a node (or a whole feedback loop's worth of them) clear
 // of the tangle without it drifting back once you let go ----
@@ -2057,7 +2053,6 @@ function setPinned(id, pinned) {
   const el = nodeEls.get(id);
   if (el) el.classList.toggle('pinned', pinned);
   if (!pinned) startSim(); // released back into the live layout - let it settle again
-  renderLoopList(); // a loop row's pin button reflects whether all its nodes are pinned
 }
 
 // independent of the merge/loop/add-node modes - those only change what a
@@ -2069,7 +2064,7 @@ function setFreeMode(on) {
   if (on) {
     clearSelection();
     // freezes the whole diagram at once - every node not already pinned for
-    // some other reason (e.g. a saved loop's own pin button) - so nothing
+    // some other reason (e.g. a single node pinned by hand) - so nothing
     // drifts while you rearrange things. Only the nodes pinned *by this
     // sweep* get tracked here, so turning the toggle back off releases
     // exactly those and leaves an independently-pinned node alone.
@@ -2081,14 +2076,13 @@ function setFreeMode(on) {
       const el = nodeEls.get(n.id);
       if (el) el.classList.add('pinned');
     });
-    renderLoopList(); // a loop row's pin button reflects whether all its nodes are pinned
   } else {
     // turning the toggle back off is what actually resumes the layout
     // springs for everything this session froze - not just a label flip
     let releasedAny = false;
     freeModeAutoPinned.forEach(id => {
       const n = byId.get(id);
-      if (!n || !n.pinned) return; // gone, or already released by hand (e.g. a loop's pin button) - leave as-is
+      if (!n || !n.pinned) return; // gone, or already released by hand - leave as-is
       n.pinned = false;
       const el = nodeEls.get(id);
       if (el) el.classList.remove('pinned');

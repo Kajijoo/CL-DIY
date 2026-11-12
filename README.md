@@ -37,7 +37,7 @@ Everything happens in your browser. Nothing is uploaded anywhere.
   rename it.
 - **Layout:** drag variables anywhere. Nodes stay where you put them; turn
   on the layout springs when you want the diagram to tidy itself.
-- **Undo, search and a change log** of every edit. "Comment on edits" is
+- **Undo, redo, search and a change log** of every edit. "Comment on edits" is
   on by default: each change (deleting or merging variables, adding links,
   ...) asks for an optional note on why it was made. Turn it off from the
   prompt or the button; you can also comment on any entry in the log later.

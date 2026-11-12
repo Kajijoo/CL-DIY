@@ -680,7 +680,7 @@ input[type="search"]:focus {
   border-radius: 3px;
   padding: 1px 5px;
 }
-.loop-row-remove, .loop-row-pin, .loop-row-png {
+.loop-row-remove, .loop-row-png {
   all: unset;
   cursor: pointer;
   color: var(--ink-soft);
@@ -688,8 +688,6 @@ input[type="search"]:focus {
   display: inline-flex;
 }
 .loop-row-remove:hover { color: var(--spotlight); }
-.loop-row-pin:hover { color: var(--accent); }
-.loop-row-pin[data-active="1"] { color: var(--accent); }
 .loop-row-png:hover { color: var(--accent); }
 .loop-empty { font-size: 0.78rem; color: var(--ink-soft); font-style: italic; }
 
